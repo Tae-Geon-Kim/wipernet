@@ -3,7 +3,7 @@
 > 에이전트는 **구현 전에** 이 문서를 읽고, **구현 후에** 같은 PR에서 고친다 ([CLAUDE.md](../CLAUDE.md) 5장).
 > 이 문서는 지금 상태만 적는다. 바뀐 내역은 git과 PR에 남는다.
 
-- 마지막 갱신: 2026-11-02, 브랜치 `docs/project-setup` (구현 시작 전)
+- 마지막 갱신: 2026-11-02, 브랜치 `docs/task-15-plan-gaps` (구현 시작 전)
 - 근거: [설계](2026-10-30-wipernet-design.md), [구현 계획](superpowers/plans/2026-10-30-wipernet.md)
 
 ## 상태 표기
@@ -52,11 +52,13 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 | | A7 | 음성 안내 | 📐 | 14 |
 | | A8 | 차량 준비 (창문·김서림·전조등) | 📐 | 14 |
 | | A9 | 우회 경로 | 📐 | 14 |
-| | A10 | 예/아니오 응답 | 📐 | 14 |
+| | A10 | 예/아니오 응답 (음성 + 알림 버튼) | 📐 | 14, 15 |
 | | A11 | 동작 실행기 (고정 문구) | 📐 | 14 |
 | | A12 | 앱 컨트롤러 (데모 / 라이브 모드) | 📐 | 15 |
 | | A13 | 주행 화면 | 📐 | 15 |
 | | A14 | 비 지도 화면 (기어 P) | 📐 | 15 |
+| | A15 | 뒤에서 도는 서비스 | 📐 | 15 |
+| | A16 | 업로드 규칙 (언제 보내나) | 📐 | 15 |
 | 공유 계약 | C1 | API 계약 `docs/api.md` | 📐 | 1, 4 |
 | | C2 | 지하차도 목록 `shared/underpasses_gangnam.json` | 📐 | 1 |
 | | C3 | 데모 시나리오 `scenario.json` | 📐 | 10 |
@@ -72,14 +74,17 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 
 | 바꾸는 것 | 영향받는 기능 |
 |---|---|
-| C4 와이퍼 값 목록·세기표 | V1, S4 `MMPH_TO_SWITCH`, A4 `PleosVehicleSignals`, C3 |
+| C4 와이퍼 값 목록·세기표 | V1, S4 `MMPH_TO_SWITCH`, A4 `PleosVehicleSignals`, A16, C3 |
 | V2 `CellEstimate` 필드 | V3, V4, C1, V6, S6, S7, A6 |
+| V2 격자 칸 크기·`cell_of` 식 | A16 (앱도 같은 식으로 칸을 계산한다) |
+| A4 `VehicleSignals` (`guiding` 포함) | A12, A16, `PleosVehicleSignals`, `ReplayVehicleSignals` |
 | V3 `UnderpassRisk` 필드·단계 기준 | V4, C1, V6, S7(경고 시각 탐색), A3, A6, A12 `Model.kt` |
 | C1 API 계약 | V4, S5, A5, A6, V6 |
 | C2 지하차도 목록 | V3, S3 `route_through`, S7 |
 | C3 시나리오 스키마 | S7, A4 `ReplayVehicleSignals`, A6 `ReplayHazardClient`, `Scenario.kt` |
 | A1 `Settings` | A3, A8, A12, 설정 화면 |
-| A3 `Action` 종류 | A11, A12 |
+| A3 `Action` 종류 | A11, A12, A15(경고 알림) |
+| A10 `ConsentPrompt` | A11, A15 |
 | V5 저장 방식 | V4만. 다른 모듈은 `store.py`를 직접 알지 않는다 |
 
 **흐름 요약**
@@ -121,17 +126,19 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 | A1 | 동의·설정 | 첫 실행 동의 화면("동의" 버튼으로만). 기본 데모 모드. 차량 준비 항목별 켜기/끄기. 철회하면 전송 중지·큐 삭제 | `settings/Settings.kt`, `ui/ConsentScreen.kt`, `ui/SettingsScreen.kt`, `MainActivity.kt` | `SettingsTest` | — |
 | A2 | 앞쪽 지하차도 찾기 | 내비 TBT가 지하차도 진입이면 그 거리 앞 300 m 안의 지하차도. 아니면 2 km 안, 진행 방향 ±30° | `core/UpcomingUnderpassDetector.kt` | `UpcomingUnderpassDetectorTest` | — |
 | A3 | 위험 판단 | 기어 P면 아무것도 안 함. WARNING 이상 → 경고 + 우회 제안, CAUTION → 안내. 같은 지하차도 5분 쿨다운. 거절하면 단계가 오를 때만 다시. 앞 1~3분 거리에 10 mm/h 이상 칸 → 차량 준비(10분에 한 번) | `core/Model.kt`, `core/HazardDecider.kt` | `HazardDeciderTest` | — |
-| A4 | 차량 신호 | 와이퍼(Vehicle SDK, capability 확인), 위치(FusedLocation, 안 되면 NaviHelper), 기어, TBT(NaviHelper), 창문. 데모 모드는 C3를 시간대로 재생 | `data/VehicleSignals.kt`, `data/PleosVehicleSignals.kt`, `data/ReplayVehicleSignals.kt` | `ScenarioTest`(재생만) | — |
+| A4 | 차량 신호 | 와이퍼(Vehicle SDK, capability 확인), 위치(FusedLocation, 안 되면 NaviHelper), 기어, TBT(NaviHelper), 창문, 길안내 중인지(NaviHelper, 없으면 최근 30초 TBT). 데모 모드는 C3를 시간대로 재생 | `data/VehicleSignals.kt`, `data/PleosVehicleSignals.kt`, `data/ReplayVehicleSignals.kt` | `ScenarioTest`(재생만) | — |
 | A5 | 업로드 큐·임시 ID | 파일 큐, 최대 5,000건(넘으면 가장 오래된 것부터 버림), 한 번에 200건, 실패하면 남기고 순서 유지. 임시 ID 15분 회전. 동의 없으면 안 보냄 | `data/UploadQueue.kt`, `data/TempId.kt` | `UploadQueueTest`, `TempIdTest` | — |
 | A6 | 위험 정보 클라이언트 | 라이브: 5초마다 조회, 2번 연속 실패면 오프라인, 내 차 3 km 칸만 보관. 데모: C3 재생 | `data/HazardClient.kt`, `data/LiveHazardClient.kt`, `data/ReplayHazardClient.kt`, `data/Scenario.kt` | `HazardClientTest` | — |
 | A7 | 음성 안내 | Pleos TTS(`ON_DEVICE`) | `act/Announcer.kt` | `ActionRunnerTest`(가짜) | — |
 | A8 | 차량 준비 | 창문 닫기, 에어컨·디프로스터, 전조등. 기능이 없거나 실패하면 음성 제안으로 바꾼다 | `act/VehiclePrep.kt` | `ActionRunnerTest`(가짜) | — |
 | A9 | 우회 경로 | NaviHelper 경유지 추가 + 재탐색(경유지 최대 2개) | `act/Rerouter.kt` | `ActionRunnerTest`(가짜) | — |
-| A10 | 예/아니오 응답 | STT("네/아니오"), 안 되면 큰 버튼 2개. 8초 무응답이면 응답 없음 | `act/ConsentPrompt.kt` | `ActionRunnerTest`(가짜) | — |
+| A10 | 예/아니오 응답 | 음성(STT "네/아니오")과 시스템 알림의 예/아니오 버튼 중 먼저 온 답. 8초 무응답이면 응답 없음. 앱 화면에는 버튼을 띄우지 않는다 | `act/ConsentPrompt.kt`, `act/NotificationPrompt.kt` | `ActionRunnerTest`(가짜), `EitherPromptTest` | — |
 | A11 | 동작 실행기 | A3의 동작을 계획 Task 14의 **고정 문구**로 실행한다 | `act/ActionRunner.kt` | `ActionRunnerTest` | — |
-| A12 | 앱 컨트롤러 | 모드에 따라 신호·위험 정보 구현을 고른다. 1초마다 찾기 → 판단 → 실행. 라이브 모드는 이벤트를 큐에 넣고 10초마다 전송 | `AppController.kt` | — | — |
+| A12 | 앱 컨트롤러 | A15 서비스 안에서 돈다. 모드에 따라 신호·위험 정보 구현을 고른다. 1초마다 찾기 → 판단 → 실행. 라이브 모드는 A16이 고른 이벤트만 큐에 넣고 10초마다 전송. 데모 모드는 업로드 안 함 | `AppController.kt` | — | — |
 | A13 | 주행 화면 | 평소에는 작은 상태 표시만. 경고가 있을 때만 위쪽 큰 띠(이름, 거리, 단계 색) | `ui/DrivingScreen.kt` | — | — |
 | A14 | 비 지도 화면 | 기어 P에서만. 내 위치 중심 3 km의 비 칸, 지하차도 마커, 진행 방향 | `ui/RainMapScreen.kt` | — | — |
+| A15 | 뒤에서 도는 서비스 | 포그라운드 서비스(상시 알림). 동의 후 첫 실행에 시작, 화면을 닫아도 계속, 철회하면 멈춤. 부팅 때 자동 시작 시도. 경고는 음성 + 시스템 알림이고 앱 화면을 앞으로 띄우지 않는다 | `service/WiperNetService.kt`, `service/BootReceiver.kt` | — | — |
+| A16 | 업로드 규칙 | 와이퍼 켜짐: 바뀌면 + 60초마다. 켜짐→꺼짐: 한 번. 꺼짐 + 길안내 중: 칸이 바뀔 때 + 300초마다. 꺼짐 + 길안내 아님: 안 보냄 | `data/UploadPolicy.kt` | `UploadPolicyTest` | — |
 
 ## 6. 공유 계약
 
@@ -153,6 +160,7 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 | 차량 밀도 현재 100대 / 미래 1,500대, AUTO 비율 25% (가정치) | S5 |
 | 경고 쿨다운 300초, 차량 준비 600초에 한 번 | A3 |
 | 업로드 큐 5,000건, 한 번에 200건 | A5 |
+| 켜짐 재전송 60초, 길안내 중 꺼짐 보고 300초 | A16 |
 | 데모 지역 위도 37.47~37.53, 경도 127.00~127.07 / 2022-08-08 17:00~23:00 KST | 전체 |
 
 ---
@@ -169,11 +177,11 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 | Virtual Console 와이퍼 Low/High가 SDK에서 어떤 값으로 오는가 | C4, V1 | 미확인 |
 | 시스템 알림의 예/아니오 버튼이 동작하는가 | A10 | 미확인 |
 | Window·HVAC·Light 제어가 Virtual Console에 반영되는가 | A8 | 미확인 |
+| NaviHelper에 길안내 중인지 알려 주는 API가 있는가 | A4, A16 | 미확인 |
+| 포그라운드 서비스가 Pleos에서 화면 밖에서도 계속 도는가 | A15 | 미확인 |
 
-**설계에는 있는데 계획에 Task가 없는 것** (구현 전에 사용자와 정한다)
-- 뒤에서 도는 동작(포그라운드 서비스, 설계 5.6·6.8-3). 계획 Task 15의 `AppController`는 화면에 붙어 있다.
-- 시스템 알림으로 경고하고 예/아니오를 받는 것(설계 5.6-3, 6.8-4). 계획 Task 14는 화면 버튼이다.
-- 길안내 중 와이퍼가 꺼진 차도 칸이 바뀔 때와 5분마다 "꺼짐"을 보내는 것(설계 5.1). 계획 Task 15는 "와이퍼 변경 + 켜져 있으면 60초마다"만 있다.
+**계획끼리 맞지 않는 것** (구현 전에 사용자와 정한다)
+- 시뮬레이터(S5)는 와이퍼가 꺼진 차를 다시 보내지 않는다(계획 Task 7: 바뀔 때 + 켜진 차만 60초마다). 앱(A16)은 길안내 중 꺼진 차도 5분마다 보낸다. 시뮬레이터 차가 꺼짐을 보내지 않으면 마른 칸에 차가 3대 모이지 않아, 한 대짜리 오경보를 거르는 규칙이 시뮬레이션에서 제대로 시험되지 않는다.
 
 **그 밖의 위험**
 - 기상청 AWS 분 자료가 없으면 시간 자료를 10분 단위로 똑같이 나눠 쓴다(S1). 비 퍼짐이 덜 자연스러워진다.
