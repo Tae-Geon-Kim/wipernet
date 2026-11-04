@@ -3,7 +3,7 @@
 > 에이전트는 **구현 전에** 이 문서를 읽고, **구현 후에** 같은 PR에서 고친다 ([CLAUDE.md](../../CLAUDE.md) 5장).
 > 이 문서는 지금 상태만 적는다. 바뀐 내역은 git과 PR에 남는다.
 
-- 마지막 갱신: 2026-11-04, 브랜치 `docs/sim-fixes-external-data` (구현 시작 전)
+- 마지막 갱신: 2026-11-04, 브랜치 `feat/task-01-wiper-intensity` (Task 1)
 - 근거: [설계](../2026-10-30-wipernet-design.md), [구현 계획](../superpowers/plans/2026-10-30-wipernet.md)
 
 ## 상태 표기
@@ -38,7 +38,7 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 | | S5 | 업로드 규칙과 차량 무리 실행 (fleet, runner) | 📐 | 7 |
 | | S6 | 검증 리포트 | 📐 | 9 |
 | | S7 | 데모 시나리오 내보내기 | 📐 | 10 |
-| 서버 | V1 | 와이퍼 세기 변환 | 📐 | 1 |
+| 서버 | V1 | 와이퍼 세기 변환 | 🧪 | 1 |
 | | V2 | 격자 비 지도 (3대 합의) | 📐 | 2 |
 | | V3 | 지하차도 위험 단계 | 📐 | 3 |
 | | V4 | HTTP API | 📐 | 4 |
@@ -63,11 +63,11 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 | | A14 | 비 지도 화면 (기어 P) | 📐 | 15 |
 | | A15 | 뒤에서 도는 서비스 | 📐 | 15 |
 | | A16 | 업로드 규칙 (언제 보내나) | 📐 | 15 |
-| 공유 계약 | C1 | API 계약 `docs/api.md` | 📐 | 1, 4 |
-| | C2 | 지하차도 목록 `shared/underpasses_gangnam.json` | 📐 | 1 |
+| 공유 계약 | C1 | API 계약 `docs/api.md` | 문서 있음 (서버 📐) | 1, 4 |
+| | C2 | 지하차도 목록 `shared/underpasses_gangnam.json` | 6곳 정리 (`warning_area`는 4a) | 1, 4a |
 | | C3 | 데모 시나리오 `scenario.json` | 📐 | 10 |
-| | C4 | 와이퍼 스위치·상태 값 | 📐 | 1 |
-| | C5 | 업로드 규칙 판정 사례 `shared/upload_policy_cases.json` | 📐 | 7, 15 |
+| | C4 | 와이퍼 스위치·상태 값 | 🧪 (V1 `wiper.py`) | 1 |
+| | C5 | 업로드 규칙 판정 사례 `shared/upload_policy_cases.json` | 빈 파일 (Task 7에서 채움) | 7, 15 |
 | | C6 | 외부 자료 기록 (2022-08-08 특보·재난문자·레이더) | 📐 | 4a, 4b |
 | 제출물 | D1 | README | 초안 (🚧 표시 남음) | 16 |
 | | D2 | SDK·에뮬레이터 확인 기록 `docs/setup-status.md` | 📐 | 0, 13, 14 |
@@ -159,7 +159,7 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 | ID | 무엇 | 위치 | 만드는 곳 | 쓰는 곳 |
 |---|---|---|---|---|
 | C1 | API 계약 (엔드포인트, 요청·응답 모양. 이벤트 `auto_wpm`, 위험 응답 `reasons`·`alerts`, `/v1/external`) | `docs/api.md` | V4, V9 | S5, A5, A6, V6 |
-| C2 | 강남 지하차도 목록 (`id, name, lat, lng, base_risk, bypass_waypoint, gu, warning_area`) | `shared/underpasses_gangnam.json`, 만드는 스크립트 `backend/scripts/fetch_underpasses.py` | 손 정리 + OSM | V3, V7, V9, S3, S7 |
+| C2 | 강남 지하차도 목록 (`id, name, lat, lng, base_risk, bypass_waypoint, gu, warning_area`). 6곳: 개포(high), 구룡, 대모, 사평, 양재, 양재천 | `shared/underpasses_gangnam.json`, 근거 `shared/underpasses_gangnam.md`, 만드는 스크립트 `backend/scripts/fetch_underpasses.py` | 손 정리 + OSM | V3, V7, V9, S3, S7 |
 | C3 | 데모 시나리오 (`start, step_s, my_car[], bypass, hazards[]`) | `car-app/app/src/main/assets/demo/scenario.json` | S7 | A4, A6 |
 | C4 | 와이퍼 값: 스위치 `OFF, AUTO, MIST, INTERMITTENT_LEVEL_1~5, CONTINUOUS_LEVEL_1~5, SERVICE, OTHER` / 상태 `ON, OFF, SERVICE, OTHER` | V1 `wiper.py`가 기준 | Pleos Vehicle SDK | V1, S4, A4 |
 | C5 | 업로드 규칙 판정 사례 | `shared/upload_policy_cases.json` | S5 (Task 7) | S5, A16 테스트 |
@@ -219,3 +219,5 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 - 임시 ID 회전 때문에 천천히 움직이는 차가 10분 동안 두 대로 세질 수 있다. 익명성 때문에 구조는 두고 S6에서 비율을 잰다.
 - 외부 자료 Task 3개가 늘어 일정이 빠듯하다. 레이더(V8)가 가장 무겁다.
 - 서버는 메모리 저장이라 재시작하면 상태가 사라진다(V5). 공모전 시연에는 문제없다.
+- 2022-08-08 통제 기록이 있는 지하차도는 데모 지역 안에서 개포 한 곳뿐이다(C2). 같은 날 통제된 일원지하차도는 경도 127.0755라 데모 지역 밖이다.
+- 우회 지점(C2 `bypass_waypoint`)은 지하차도 가운데에서 가장 가까운 지상 도로 위의 점이다. 구룡·대모 상부도로는 일방통행 두 갈래라 한쪽 방향에만 맞다. S3·S7에서 우회 경로가 지하차도를 지나지 않는지 확인한다.
