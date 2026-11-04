@@ -5,7 +5,7 @@
 2026 현대자동차그룹 차량용 앱 개발 공모전 출품작입니다.
 
 > [!NOTE]
-> 개발 중입니다. 아래 표시 중 🚧는 아직 구현되지 않은 부분입니다. 기능별 진행 상태는 [기능지도](docs/FEATURES.md)에서 볼 수 있습니다.
+> 개발 중입니다. 아래 표시 중 🚧는 아직 구현되지 않은 부분입니다. 기능별 진행 상태는 [기능지도](docs/features/README.md)에서 볼 수 있습니다.
 
 ---
 
@@ -72,7 +72,7 @@ adb install -r 와이퍼넷_release.apk
 | `backend/wipernet_server` | 서버 | Python 3.12, FastAPI |
 | `backend/wipernet_sim` | 가상 차량 시뮬레이터, 검증 | Python, osmnx |
 | `car-app/` | Pleos 차량 앱 | Kotlin, Jetpack Compose, Pleos Connect SDK |
-| `docs/` | 설계, API 계약, [기능지도](docs/FEATURES.md) | |
+| `docs/` | 설계, API 계약, [기능지도](docs/features/README.md) | |
 
 사용하는 Pleos SDK: Vehicle(와이퍼·창문·공조·조명), NaviHelper(경로·지하차도 안내), FusedLocation(위치), TextToSpeech(음성 안내).
 
