@@ -1,10 +1,10 @@
 # 와이퍼넷 기능지도 (Features Map)
 
-> 에이전트는 **구현 전에** 이 문서를 읽고, **구현 후에** 같은 PR에서 고친다 ([CLAUDE.md](../CLAUDE.md) 5장).
+> 에이전트는 **구현 전에** 이 문서를 읽고, **구현 후에** 같은 PR에서 고친다 ([CLAUDE.md](../../CLAUDE.md) 5장).
 > 이 문서는 지금 상태만 적는다. 바뀐 내역은 git과 PR에 남는다.
 
 - 마지막 갱신: 2026-11-04, 브랜치 `docs/sim-fixes-external-data` (구현 시작 전)
-- 근거: [설계](2026-10-30-wipernet-design.md), [구현 계획](superpowers/plans/2026-10-30-wipernet.md)
+- 근거: [설계](../2026-10-30-wipernet-design.md), [구현 계획](../superpowers/plans/2026-10-30-wipernet.md)
 
 ## 상태 표기
 
