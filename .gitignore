@@ -1,2 +1,11 @@
 .DS_Store
 .superpowers/
+.venv/
+__pycache__/
+*.egg-info/
+build/
+.gradle/
+local.properties
+backend/data/raw/
+backend/.env
+backend/cache/

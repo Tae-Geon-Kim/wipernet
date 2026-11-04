@@ -1,0 +1,8 @@
+[
+  {"id": "gaepo", "name": "개포지하차도", "lat": 37.475985, "lng": 127.058793, "base_risk": "high", "bypass_waypoint": {"lat": 37.475909, "lng": 127.058771}, "gu": "강남구", "warning_area": null},
+  {"id": "guryong", "name": "구룡지하차도", "lat": 37.471662, "lng": 127.051436, "base_risk": "normal", "bypass_waypoint": {"lat": 37.471642, "lng": 127.051561}, "gu": "강남구", "warning_area": null},
+  {"id": "daemo", "name": "대모지하차도", "lat": 37.480643, "lng": 127.067211, "base_risk": "normal", "bypass_waypoint": {"lat": 37.480701, "lng": 127.06717}, "gu": "강남구", "warning_area": null},
+  {"id": "sapyeong", "name": "사평지하도로", "lat": 37.501987, "lng": 127.003144, "base_risk": "normal", "bypass_waypoint": {"lat": 37.501944, "lng": 127.003335}, "gu": "서초구", "warning_area": null},
+  {"id": "yangjae", "name": "양재지하차도", "lat": 37.484542, "lng": 127.034175, "base_risk": "normal", "bypass_waypoint": {"lat": 37.484552, "lng": 127.034195}, "gu": "강남구", "warning_area": null},
+  {"id": "yangjaecheon", "name": "양재천지하차도", "lat": 37.471148, "lng": 127.032513, "base_risk": "normal", "bypass_waypoint": {"lat": 37.471689, "lng": 127.03181}, "gu": "서초구", "warning_area": null}
+]
