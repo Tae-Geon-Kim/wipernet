@@ -154,7 +154,7 @@
 
 ```json
 {"vehicles": [{"vid": "3f2a…", "ts": "2022-08-08T21:30:00+09:00", "lat": 37.4976, "lng": 127.0276,
-               "switch": "CONTINUOUS_LEVEL_3", "state": "ON"}]}
+               "switch": "CONTINUOUS_LEVEL_3", "state": "ON", "auto_wpm": null}]}
 ```
 
 서버 시계 기준 최근 5분 안에 이벤트를 보낸 `vid`의 마지막 이벤트. 뷰어 전용이다.
