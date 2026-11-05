@@ -3,7 +3,7 @@
 > 에이전트는 **구현 전에** 이 문서를 읽고, **구현 후에** 같은 PR에서 고친다 ([CLAUDE.md](../../CLAUDE.md) 5장).
 > 이 문서는 지금 상태만 적는다. 바뀐 내역은 git과 PR에 남는다.
 
-- 마지막 갱신: 2026-11-04, 브랜치 `feat/task-03-underpass-risk` (Task 3)
+- 마지막 갱신: 2026-11-04, 브랜치 `feat/task-04-http-api` (Task 4)
 - 근거: [설계](../2026-10-30-wipernet-design.md), [구현 계획](../superpowers/plans/2026-10-30-wipernet.md)
 
 ## 상태 표기
@@ -41,8 +41,8 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 | 서버 | V1 | 와이퍼 세기 변환 | 🧪 | 1 |
 | | V2 | 격자 비 지도 (3대 합의) | 🧪 | 2 |
 | | V3 | 지하차도 위험 단계 | 🧪 | 3 |
-| | V4 | HTTP API | 📐 | 4 |
-| | V5 | 메모리 저장소 (`store.py`) | 📐 | 4 |
+| | V4 | HTTP API | ✅ | 4 |
+| | V5 | 메모리 저장소 (`store.py`) | ✅ | 4 |
 | | V6 | 시뮬레이션 뷰어 | 📐 | 8 |
 | | V7 | 공식 알림 (기상특보, 재난문자) | 📐 | 4a |
 | | V8 | 레이더 | 📐 | 4b |
@@ -63,7 +63,7 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 | | A14 | 비 지도 화면 (기어 P) | 📐 | 15 |
 | | A15 | 뒤에서 도는 서비스 | 📐 | 15 |
 | | A16 | 업로드 규칙 (언제 보내나) | 📐 | 15 |
-| 공유 계약 | C1 | API 계약 `docs/api.md` | 문서 있음 (서버 📐) | 1, 4 |
+| 공유 계약 | C1 | API 계약 `docs/api.md` | 기본 엔드포인트 ✅ (`reasons`·`alerts`·`/v1/external`은 4c, `/viewer`는 8) | 1, 4 |
 | | C2 | 지하차도 목록 `shared/underpasses_gangnam.json` | 6곳 정리 (`warning_area`는 4a) | 1, 4a |
 | | C3 | 데모 시나리오 `scenario.json` | 📐 | 10 |
 | | C4 | 와이퍼 스위치·상태 값 | 🧪 (V1 `wiper.py`) | 1 |
@@ -124,8 +124,8 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 | V1 | 와이퍼 세기 변환 | 스위치 → 0~1 세기(고정표), AUTO는 이벤트의 `auto_wpm`으로 추정(최대 0.9, 미검증 가정), 세기 → mm/h 보간(연속 5단 = 60 mm/h가 상한). MIST·SERVICE·OTHER는 무시 | `wiper.py` | `test_wiper.py` |
 | V2 | 격자 비 지도 | 약 500 m 칸(`row = floor(lat / 0.0045)`, `col = floor(lng / 0.0057)`). 최근 10분 서로 다른 차 **3대 이상**일 때만 값을 낸다. 차별 최신 세기의 **중앙값**. MIST·SERVICE·OTHER만 보낸 차는 대수에 넣지 않는다. 10분 구간은 조회 시각 `at`에서 거꾸로 자른다(`(start, start+10분]`). 1시간 누적은 10분 구간 6개 합. 구간의 차 절반 이상이 수동 연속 5단이면 포화(`saturated_min`). `at`보다 늦은 이벤트는 쓰지 않는다. 원시 이벤트는 2시간 뒤 삭제 | `grid.py`, `rainmap.py` | `test_rainmap.py` |
 | V3 | 지하차도 위험 단계 | 칸 중심이 반경 1 km(하버사인) 안인 칸들의 최대 세기·누적으로 NONE / CAUTION / WARNING / DANGER. 기준은 이상(≥). 위험도 높은 곳은 기준 × 0.75. 기준표는 `level_from`으로 V9도 쓴다. `load_underpasses`는 C2의 `gu`·`warning_area`까지 읽는다(V7, V9용) | `underpass.py` | `test_underpass.py` |
-| V4 | HTTP API | C1 계약 그대로. 5분 넘게 미래인 이벤트 거부. 배치마다 오래된 이벤트 정리. 뷰어용 차량 조회는 최근 5분 안에 보낸 차만 | `api.py` (`uvicorn wipernet_server.api:app --port 8000`) | `test_api.py` |
-| V5 | 메모리 저장소 | 서버 상태를 메모리에만 둔다. DB·Alembic은 공모전 범위 밖(설계 6.9). 저장 방식을 바꿀 때는 이 파일만 바꾼다 | `store.py` | `test_api.py`로 간접 |
+| V4 | HTTP API | C1 계약 그대로. 배치를 받기 전 서버 시계보다 5분 넘게 미래인 이벤트 거부(시계가 없으면 받음). 시각에 시간대가 없으면 422. 배치마다 오래된 이벤트 정리. 뷰어용 차량 조회는 최근 5분 안에 보낸 차만. `/v1/underpass-risk`는 아직 와이퍼만(`reasons`·`alerts`는 4c). 실제 서버(uvicorn)로 모든 엔드포인트 호출 확인 | `api.py` (`uvicorn wipernet_server.api:app --port 8000`) | `test_api.py` |
+| V5 | 메모리 저장소 | 서버 상태(비 지도, 서버 시계, 차별 마지막 이벤트)를 메모리에만 둔다. 차별 마지막 이벤트도 2시간 뒤 지운다. DB·Alembic은 공모전 범위 밖(설계 6.9). 저장 방식을 바꿀 때는 이 파일만 바꾼다 | `store.py` | `test_api.py`로 간접 |
 | V6 | 뷰어 | `/viewer`. Leaflet 1.9.4 지도, 1초마다 차량 점·비 칸·지하차도 마커(근거 포함) 갱신, 위쪽에 특보·재난문자 한 줄. 영상 녹화용 | `viewer/index.html` | `test_api.py::test_viewer_served` |
 | V7 | 공식 알림 | 호우특보(공공데이터포털 기상특보 조회서비스)와 재난문자(재난안전데이터공유플랫폼). 실시간 / 기록 재생. 재난문자는 본문의 지하차도 이름 + 통제·침수면 `closure`, 그 구 또는 시 전체의 호우 안내면 `rain` | `external/official.py`, `backend/scripts/normalize_kma_warnings.py` | `test_official.py` |
 | V8 | 레이더 | 기상청 레이더 강우강도를 와이퍼넷 칸별 mm/h로 바꾼다. 실시간 / 기록 재생. 시뮬레이터 입력으로는 쓰지 않는다 | `external/radar.py`, `backend/scripts/fetch_radar.py` | `test_radar.py` |
