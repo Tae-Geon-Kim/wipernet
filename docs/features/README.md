@@ -3,7 +3,7 @@
 > 에이전트는 **구현 전에** 이 문서를 읽고, **구현 후에** 같은 PR에서 고친다 ([CLAUDE.md](../../CLAUDE.md) 5장).
 > 이 문서는 지금 상태만 적는다. 바뀐 내역은 git과 PR에 남는다.
 
-- 마지막 갱신: 2026-11-04, 브랜치 `feat/task-04-http-api` (Task 4)
+- 마지막 갱신: 2026-11-05, 브랜치 `feat/task-04a-official-alerts` (Task 4a)
 - 근거: [설계](../2026-10-30-wipernet-design.md), [구현 계획](../superpowers/plans/2026-10-30-wipernet.md)
 
 ## 상태 표기
@@ -44,7 +44,7 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 | | V4 | HTTP API | ✅ | 4 |
 | | V5 | 메모리 저장소 (`store.py`) | ✅ | 4 |
 | | V6 | 시뮬레이션 뷰어 | 📐 | 8 |
-| | V7 | 공식 알림 (기상특보, 재난문자) | 📐 | 4a |
+| | V7 | 공식 알림 (기상특보, 재난문자) | 🧪 | 4a |
 | | V8 | 레이더 | 📐 | 4b |
 | | V9 | 와이퍼와 외부 자료 합치기 | 📐 | 4c |
 | 차량 앱 | A1 | 동의·설정 | 📐 | 11 |
@@ -64,13 +64,13 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 | | A15 | 뒤에서 도는 서비스 | 📐 | 15 |
 | | A16 | 업로드 규칙 (언제 보내나) | 📐 | 15 |
 | 공유 계약 | C1 | API 계약 `docs/api.md` | 기본 엔드포인트 ✅ (`reasons`·`alerts`·`/v1/external`은 4c, `/viewer`는 8) | 1, 4 |
-| | C2 | 지하차도 목록 `shared/underpasses_gangnam.json` | 6곳 정리 (`warning_area`는 4a) | 1, 4a |
+| | C2 | 지하차도 목록 `shared/underpasses_gangnam.json` | 6곳 정리, `warning_area` 채움 | 1, 4a |
 | | C3 | 데모 시나리오 `scenario.json` | 📐 | 10 |
 | | C4 | 와이퍼 스위치·상태 값 | 🧪 (V1 `wiper.py`) | 1 |
 | | C5 | 업로드 규칙 판정 사례 `shared/upload_policy_cases.json` | 빈 파일 (Task 7에서 채움) | 7, 15 |
-| | C6 | 외부 자료 기록 (2022-08-08 특보·재난문자·레이더) | 📐 | 4a, 4b |
+| | C6 | 외부 자료 기록 (2022-08-08 특보·재난문자·레이더) | 특보·재난문자 정리 (레이더는 4b) | 4a, 4b |
 | 제출물 | D1 | README | 초안 (🚧 표시 남음) | 16 |
-| | D2 | SDK·에뮬레이터 확인 기록 `docs/setup-status.md` | 📐 | 0, 13, 14 |
+| | D2 | SDK·에뮬레이터·외부 자료 확인 기록 `docs/setup-status.md` | 외부 자료 확인 (SDK·에뮬레이터는 미확인) | 0, 13, 14 |
 | | D3 | 영상 대본, 제출 점검표 | 📐 | 16 |
 | | D4 | APK (`release/`, GitHub Releases) | 📐 | 16 |
 
@@ -127,7 +127,7 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 | V4 | HTTP API | C1 계약 그대로. 배치를 받기 전 서버 시계보다 5분 넘게 미래인 이벤트 거부(시계가 없으면 받음). 시각에 시간대가 없으면 422. 배치마다 오래된 이벤트 정리. 뷰어용 차량 조회는 최근 5분 안에 보낸 차만. `/v1/underpass-risk`는 아직 와이퍼만(`reasons`·`alerts`는 4c). 실제 서버(uvicorn)로 모든 엔드포인트 호출 확인 | `api.py` (`uvicorn wipernet_server.api:app --port 8000`) | `test_api.py` |
 | V5 | 메모리 저장소 | 서버 상태(비 지도, 서버 시계, 차별 마지막 이벤트)를 메모리에만 둔다. 차별 마지막 이벤트도 2시간 뒤 지운다. DB·Alembic은 공모전 범위 밖(설계 6.9). 저장 방식을 바꿀 때는 이 파일만 바꾼다 | `store.py` | `test_api.py`로 간접 |
 | V6 | 뷰어 | `/viewer`. Leaflet 1.9.4 지도, 1초마다 차량 점·비 칸·지하차도 마커(근거 포함) 갱신, 위쪽에 특보·재난문자 한 줄. 영상 녹화용 | `viewer/index.html` | `test_api.py::test_viewer_served` |
-| V7 | 공식 알림 | 호우특보(공공데이터포털 기상특보 조회서비스)와 재난문자(재난안전데이터공유플랫폼). 실시간 / 기록 재생. 재난문자는 본문의 지하차도 이름 + 통제·침수면 `closure`, 그 구 또는 시 전체의 호우 안내면 `rain` | `external/official.py`, `backend/scripts/normalize_kma_warnings.py` | `test_official.py` |
+| V7 | 공식 알림 | 호우특보는 기상청 API허브(`wrn_met_data.php`)에서 받아 구역별 주의보·경보 기간으로 만든다(예비특보 제외, 단계가 바뀌면 앞 단계를 닫음). 실시간은 60초 캐시, 실패하면 마지막 결과. 재난문자는 보도로 정리한 기록 재생만(실시간 API는 2023년 이후 자료·상업적 이용 금지라 연동 안 함, D2). 기록 재생은 `at` 뒤에 알 수 있는 것(늦은 문자, 해제 시각)을 감춘다. 재난문자는 본문의 지하차도 이름 + 통제·침수 낱말이면 `closure`, 그 구 또는 서울특별시 전체의 호우·폭우·침수 안내면 `rain` | `external/official.py`, `backend/scripts/fetch_kma_warnings.py` | `test_official.py` |
 | V8 | 레이더 | 기상청 레이더 강우강도를 와이퍼넷 칸별 mm/h로 바꾼다. 실시간 / 기록 재생. 시뮬레이터 입력으로는 쓰지 않는다 | `external/radar.py`, `backend/scripts/fetch_radar.py` | `test_radar.py` |
 | V9 | 합치기 | 출처별 단계의 최댓값(위험은 올리기만). 와이퍼 포화 구간은 레이더 값이 더 크면 대체. 레이더만 최대 WARNING, 특보 최대 CAUTION, 재난문자 통제 DANGER·호우 안내 CAUTION. 근거 `reasons`를 함께 낸다. `WIPERNET_EXTERNAL=replay\|live\|off` | `fusion.py` | `test_fusion.py` |
 
@@ -159,7 +159,7 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 | ID | 무엇 | 위치 | 만드는 곳 | 쓰는 곳 |
 |---|---|---|---|---|
 | C1 | API 계약 (엔드포인트, 요청·응답 모양. 이벤트 `auto_wpm`, 위험 응답 `reasons`·`alerts`, `/v1/external`) | `docs/api.md` | V4, V9 | S5, A5, A6, V6 |
-| C2 | 강남 지하차도 목록 (`id, name, lat, lng, base_risk, bypass_waypoint, gu, warning_area`). 6곳: 개포(high), 구룡, 대모, 사평, 양재, 양재천 | `shared/underpasses_gangnam.json`, 근거 `shared/underpasses_gangnam.md`, 만드는 스크립트 `backend/scripts/fetch_underpasses.py` | 손 정리 + OSM | V3, V7, V9, S3, S7 |
+| C2 | 강남 지하차도 목록 (`id, name, lat, lng, base_risk, bypass_waypoint, gu, warning_area`). 6곳: 개포(high), 구룡, 대모, 사평, 양재, 양재천. 특보구역은 모두 서울동남권 `L1100100` | `shared/underpasses_gangnam.json`, 근거 `shared/underpasses_gangnam.md`, 만드는 스크립트 `backend/scripts/fetch_underpasses.py` | 손 정리 + OSM | V3, V7, V9, S3, S7 |
 | C3 | 데모 시나리오 (`start, step_s, my_car[], bypass, hazards[]`) | `car-app/app/src/main/assets/demo/scenario.json` | S7 | A4, A6 |
 | C4 | 와이퍼 값: 스위치 `OFF, AUTO, MIST, INTERMITTENT_LEVEL_1~5, CONTINUOUS_LEVEL_1~5, SERVICE, OTHER` / 상태 `ON, OFF, SERVICE, OTHER` | V1 `wiper.py`가 기준 | Pleos Vehicle SDK | V1, S4, A4 |
 | C5 | 업로드 규칙 판정 사례 | `shared/upload_policy_cases.json` | S5 (Task 7) | S5, A16 테스트 |
@@ -205,15 +205,16 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 
 | 질문 | 영향 | 결과 |
 |---|---|---|
-| 기상특보 API·포털에서 2022-08-08 호우특보가 실제로 나오는가 | V7 기록 재생 | 미확인 (조회 파라미터는 있음) |
-| 재난문자 API로 2022년 문자를 받을 수 있는가 | V7 기록 재생 | 어려울 가능성 큼 (제공 기간 2023~2025-01로 표시). 공개 보도로 손 정리 |
-| 레이더 합성 자료의 파일 형식·좌표계와 API허브 호출 방식 | V8 | 미확인 (보유 기간 2016~현재는 확인) |
+| 기상특보 API·포털에서 2022-08-08 호우특보가 실제로 나오는가 | V7 기록 재생 | 확인. API허브 특보자료로 받음 (D2) |
+| 재난문자 API로 2022년 문자를 받을 수 있는가 | V7 기록 재생 | 못 받음 (제공 기간 2023~2025-01, 공공누리 제4유형). 공개 보도로 손 정리 |
+| 레이더 합성 자료의 파일 형식·좌표계와 API허브 호출 방식 | V8 | 호출 확인. HSR·1시간 누적을 텍스트 격자로 받고 격자 위경도 API가 있음 (D2). 단위·변환은 4b |
+| AWS 분 자료를 받을 수 있는가 | S1 | 확인. API허브 AWS 매분자료 (D2) |
+| 상용 배포 때 외부 자료를 쓸 수 있는가 | V7, V8, S1 | 기상청 API허브는 공공누리 제1유형(출처표시, 상업 이용 가능). 재난문자 API는 제4유형이라 별도 협의 필요. 기상예보업 등록 필요 여부는 상용화 전 확인 (D2) |
 
 **계획끼리 맞지 않는 것**
 - 지금은 없다. 시뮬레이터와 앱의 업로드 규칙 차이는 같은 규칙(C5)을 쓰는 것으로 정리했다(설계 6.10.1).
 
 **그 밖의 위험**
-- 기상청 AWS 분 자료가 없으면 시간 자료를 10분 단위로 똑같이 나눠 쓴다(S1). 비 퍼짐이 덜 자연스러워진다.
 - AUTO 세기 추정식(V1, S4)은 검증하지 않은 가정이다.
 - 와이퍼는 60 mm/h를 넘는 비를 구분하지 못한다(V1 상한). 레이더(V8)가 없으면 1시간 누적은 최대 60 mm라 누적 기준 "위험"(80 mm)에 닿지 않는다. 세기 기준으로는 위험 단계가 나온다(설계 6.10.2).
 - 임시 ID 회전 때문에 천천히 움직이는 차가 10분 동안 두 대로 세질 수 있다. 익명성 때문에 구조는 두고 S6에서 비율을 잰다.
