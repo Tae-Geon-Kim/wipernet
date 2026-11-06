@@ -1,8 +1,8 @@
-"""지하차도 침수 위험 단계. 와이퍼 비 지도만으로 판단한다(외부 자료 합치기는 Task 4c)."""
+"""지하차도 침수 위험 단계. 와이퍼 비 지도만으로 판단한다(외부 자료와 합치기는 fusion.py)."""
 
 import json
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
@@ -44,6 +44,8 @@ class UnderpassRisk:
     mmph_10m: float
     acc1h_mm: float
     bypass_waypoint: dict | None
+    reasons: list[str] = field(default_factory=list)  # fusion.py가 채운다
+    alerts: list[dict] = field(default_factory=list)
 
 
 def load_underpasses(path: str | Path) -> list[Underpass]:
@@ -58,7 +60,7 @@ def level_from(mmph: float, acc1h_mm: float, base_risk: str) -> Level:
     return "NONE"
 
 
-def _distance_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+def distance_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     p1, p2 = math.radians(lat1), math.radians(lat2)
     dp, dl = p2 - p1, math.radians(lng2 - lng1)
     a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
@@ -68,7 +70,7 @@ def _distance_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
 def assess(underpasses: list[Underpass], cells: list[CellEstimate]) -> list[UnderpassRisk]:
     out = []
     for up in underpasses:
-        near = [c for c in cells if _distance_km(up.lat, up.lng, c.lat, c.lng) <= RADIUS_KM]
+        near = [c for c in cells if distance_km(up.lat, up.lng, c.lat, c.lng) <= RADIUS_KM]
         mmph = max((c.mmph for c in near), default=0.0)
         acc = max((c.acc1h_mm for c in near), default=0.0)
         out.append(UnderpassRisk(

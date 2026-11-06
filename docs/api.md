@@ -17,7 +17,7 @@
 | `GET /v1/clock` | 서버 시계 | 앱(라이브), 뷰어 |
 | `GET /v1/rain-map?at=` | 격자 비 지도 | 앱(라이브), 뷰어, 검증 |
 | `GET /v1/underpass-risk?at=` | 지하차도 위험 단계 | 앱(라이브), 뷰어, 검증, 데모 내보내기 |
-| `GET /v1/external?at=` | 발효 중 특보와 최근 재난문자 (Task 4c) | 뷰어 |
+| `GET /v1/external?at=` | 발효 중 특보와 최근 재난문자 | 뷰어 |
 | `GET /v1/debug/vehicles` | 최근 5분 안에 보낸 차의 마지막 상태 | 뷰어 |
 | `POST /v1/reset` | 서버 상태 초기화 | 시뮬레이터(시작할 때) |
 | `GET /viewer` | 시뮬레이션 뷰어 페이지 (Task 8) | 브라우저 |
@@ -107,7 +107,7 @@
 }
 ```
 
-`UnderpassRisk` (Task 3, Task 4c에서 `reasons`·`alerts` 추가):
+`UnderpassRisk`:
 
 ```json
 {
@@ -123,8 +123,8 @@
 |---|---|
 | `id`, `name`, `lat`, `lng`, `bypass_waypoint` | `shared/underpasses_gangnam.json` 그대로. `bypass_waypoint`는 없으면 `null` |
 | `level` | `NONE` < `CAUTION` < `WARNING` < `DANGER` |
-| `mmph_10m`, `acc1h_mm` | 반경 1 km 안 칸들의 최대 세기·최대 1시간 누적 |
-| `reasons` | `level`을 낸 근거. `vehicles`, `saturated`, `radar`, `kma_warning`, `alert_closure`, `alert_rain` 중 NONE이 아닌 단계를 낸 것만 |
+| `mmph_10m`, `acc1h_mm` | 반경 1 km 안 칸들의 최대 세기·최대 1시간 누적. 와이퍼(포화 구간은 레이더로 바꾼 뒤)와 레이더 중 큰 값 |
+| `reasons` | NONE보다 높은 단계를 낸 출처. 이 순서로 `vehicles`, `saturated`, `radar`, `kma_warning`, `alert_closure`, `alert_rain`. 최종 단계보다 낮은 단계를 낸 출처도 담는다 |
 | `alerts` | 이 지하차도에 연결된 최근 2시간 재난문자 |
 
 단계 기준(와이퍼·레이더 공통, `base_risk: "high"`면 모든 기준 × 0.75):
@@ -135,20 +135,31 @@
 | WARNING | ≥ 40 | ≥ 50 |
 | DANGER | ≥ 60 | ≥ 80 |
 
-외부 자료는 위험을 올리기만 하고 내리지 않는다. 최종 단계는 출처별 단계의 최댓값이다. 레이더만이면 최대 WARNING, 호우특보는 CAUTION, 재난문자 통제는 DANGER, 재난문자 호우 안내는 CAUTION이다(설계 6.10.4).
+외부 자료는 위험을 올리기만 하고 내리지 않는다. 최종 단계는 출처별 단계의 최댓값이다(설계 6.10.4).
 
-### `GET /v1/external` (Task 4c)
+| 출처 | 단계 | `reasons` |
+|---|---|---|
+| 와이퍼. 포화 구간은 그 구간이 끝난 시각의 레이더 값이 더 크면 그 값으로 바꿔 세기·누적을 다시 계산 | 위 기준 그대로 | `vehicles`. 반경 안 칸이 30분 넘게 포화면 `saturated`도 |
+| 레이더만 (반경 안 레이더 칸, 누적은 10분 구간 6개) | 위 기준, 최대 WARNING | `radar` |
+| 지하차도 특보 구역(`warning_area`)의 호우주의보·경보 | CAUTION | `kma_warning` |
+| 최근 2시간 재난문자: 지하차도 이름 + 통제·침수 낱말 | DANGER | `alert_closure` |
+| 최근 2시간 재난문자: 그 구 또는 서울특별시 전체의 호우·폭우·침수 안내 | CAUTION | `alert_rain` |
+
+서버 시계가 아직 없으면(이벤트를 받은 적이 없고 `at`도 없으면) `at: null`이고 모든 지하차도가 NONE이다.
+
+### `GET /v1/external`
 
 ```json
 {
-  "warnings": [{"area_code": "…", "area_name": "서울", "stress": "WARNING",
-                "start": "2022-08-08T18:00:00+09:00", "end": null}],
-  "alerts": [{"sent_at": "2022-08-08T18:17:00+09:00", "regions": ["서울특별시"],
-              "text": "…", "source_url": "https://…"}]
+  "at": "2022-08-09T00:30:00+09:00",
+  "warnings": [{"area_code": "L1100100", "area_name": "서울동남권", "stress": "WARNING",
+                "start": "2022-08-08T12:50:00+09:00", "end": null}],
+  "alerts": [{"sent_at": "2022-08-09T00:23:00+09:00", "regions": ["서울특별시 강남구"],
+              "text": "[강남구청] 대모산 및 양재천 인근지역, …", "source_url": "http://…"}]
 }
 ```
 
-`warnings`는 `at`에 발효 중인 호우특보(`stress`: `ADVISORY` 주의보, `WARNING` 경보), `alerts`는 `at` 이전 2시간 안의 재난문자다. 서버 환경 변수 `WIPERNET_EXTERNAL=replay|live|off`(기본 `replay`)로 출처를 고른다. `off`면 둘 다 빈 목록이다.
+`warnings`는 `at`에 발효 중인 호우특보(`stress`: `ADVISORY` 주의보, `WARNING` 경보)다. 기록 재생에서는 `at`에 아직 모르는 해제 시각을 감춰 `end`가 `null`이다. `alerts`는 `at` 이전 2시간 안의 재난문자다. `at`이 없으면 서버 시계를 쓰고, 서버 시계도 없으면 둘 다 빈 목록이다. 서버 환경 변수 `WIPERNET_EXTERNAL=replay|live|off`(기본 `replay`)로 출처를 고른다. `live`는 `KMA_API_HUBKEY`가 없으면 서버가 시작하지 않는다. 실시간 재난문자는 받지 않아 `alerts`가 늘 빈 목록이다(`docs/setup-status.md`). `off`면 둘 다 빈 목록이다.
 
 ### `GET /v1/debug/vehicles`
 

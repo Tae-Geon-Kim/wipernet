@@ -12,7 +12,12 @@ GAEPO = (37.475985, 127.058793)
 
 @pytest.fixture
 def client():
-    return TestClient(create_app())
+    return TestClient(create_app(external="off"))
+
+
+@pytest.fixture
+def replay():
+    return TestClient(create_app(external="replay"))
 
 
 def e(vid, switch, plus_minutes=0, lat=37.50, lng=127.03, **extra):
@@ -115,3 +120,39 @@ def test_reset_clears_vehicles_and_cells(client):
     client.post("/v1/reset")
     assert client.get("/v1/debug/vehicles").json() == {"vehicles": []}
     assert client.get("/v1/rain-map").json()["cells"] == []
+
+
+def test_underpass_risk_has_reasons_and_alerts(client):
+    r = client.get("/v1/underpass-risk", params={"at": T0.isoformat()}).json()
+    assert {"reasons", "alerts"} <= r["underpasses"][0].keys()
+
+
+def test_external_off_is_empty(client):
+    assert client.get("/v1/external", params={"at": T0.isoformat()}).json() == {
+        "at": T0.isoformat(), "warnings": [], "alerts": []}
+
+
+def test_replay_warning_raises_every_underpass_to_caution(replay):
+    r = replay.get("/v1/underpass-risk", params={"at": T0.isoformat()}).json()
+    assert all(u["level"] != "NONE" for u in r["underpasses"])  # 차가 없어도 특보로 최소 CAUTION
+    assert all("kma_warning" in u["reasons"] for u in r["underpasses"])
+    ext = replay.get("/v1/external", params={"at": T0.isoformat()}).json()
+    assert [w["stress"] for w in ext["warnings"] if w["area_code"] == "L1100100"] == ["WARNING"]
+
+
+def test_replay_alert_links_to_gangnam_underpasses(replay):
+    at = datetime(2022, 8, 9, 0, 30, tzinfo=KST)  # 강남구청 00:23 문자 뒤
+    by_id = {u["id"]: u for u in replay.get("/v1/underpass-risk", params={"at": at.isoformat()}).json()["underpasses"]}
+    assert "alert_rain" in by_id["gaepo"]["reasons"] and by_id["gaepo"]["alerts"][0]["text"].startswith("[강남구청]")
+    assert by_id["sapyeong"]["alerts"] == []  # 서초구
+
+
+def test_unknown_external_mode_fails():
+    with pytest.raises(ValueError):
+        create_app(external="bogus")
+
+
+def test_live_without_key_fails(monkeypatch):
+    monkeypatch.delenv("KMA_API_HUBKEY", raising=False)
+    with pytest.raises(RuntimeError):
+        create_app(external="live")
