@@ -3,7 +3,7 @@
 > 에이전트는 **구현 전에** 이 문서를 읽고, **구현 후에** 같은 PR에서 고친다 ([CLAUDE.md](../../CLAUDE.md) 5장).
 > 이 문서는 지금 상태만 적는다. 바뀐 내역은 git과 PR에 남는다.
 
-- 마지막 갱신: 2026-11-05, 브랜치 `feat/task-04b-radar` (Task 4b)
+- 마지막 갱신: 2026-11-06, 브랜치 `feat/task-04c-fusion` (Task 4c)
 - 근거: [설계](../2026-10-30-wipernet-design.md), [구현 계획](../superpowers/plans/2026-10-30-wipernet.md)
 
 ## 상태 표기
@@ -46,7 +46,7 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 | | V6 | 시뮬레이션 뷰어 | 📐 | 8 |
 | | V7 | 공식 알림 (기상특보, 재난문자) | 🧪 | 4a |
 | | V8 | 레이더 | 🧪 | 4b |
-| | V9 | 와이퍼와 외부 자료 합치기 | 📐 | 4c |
+| | V9 | 와이퍼와 외부 자료 합치기 | 🧪 | 4c |
 | 차량 앱 | A1 | 동의·설정 | 📐 | 11 |
 | | A2 | 앞쪽 지하차도 찾기 | 📐 | 12 |
 | | A3 | 위험 판단 (경고·우회·준비·쿨다운) | 📐 | 12 |
@@ -63,7 +63,7 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 | | A14 | 비 지도 화면 (기어 P) | 📐 | 15 |
 | | A15 | 뒤에서 도는 서비스 | 📐 | 15 |
 | | A16 | 업로드 규칙 (언제 보내나) | 📐 | 15 |
-| 공유 계약 | C1 | API 계약 `docs/api.md` | 기본 엔드포인트 ✅ (`reasons`·`alerts`·`/v1/external`은 4c, `/viewer`는 8) | 1, 4 |
+| 공유 계약 | C1 | API 계약 `docs/api.md` | 엔드포인트 ✅ (`/viewer`는 8) | 1, 4, 4c |
 | | C2 | 지하차도 목록 `shared/underpasses_gangnam.json` | 6곳 정리, `warning_area` 채움 | 1, 4a |
 | | C3 | 데모 시나리오 `scenario.json` | 📐 | 10 |
 | | C4 | 와이퍼 스위치·상태 값 | 🧪 (V1 `wiper.py`) | 1 |
@@ -124,12 +124,12 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 | V1 | 와이퍼 세기 변환 | 스위치 → 0~1 세기(고정표), AUTO는 이벤트의 `auto_wpm`으로 추정(최대 0.9, 미검증 가정), 세기 → mm/h 보간(연속 5단 = 60 mm/h가 상한). MIST·SERVICE·OTHER는 무시 | `wiper.py` | `test_wiper.py` |
 | V2 | 격자 비 지도 | 약 500 m 칸(`row = floor(lat / 0.0045)`, `col = floor(lng / 0.0057)`). 최근 10분 서로 다른 차 **3대 이상**일 때만 값을 낸다. 차별 최신 세기의 **중앙값**. MIST·SERVICE·OTHER만 보낸 차는 대수에 넣지 않는다. 10분 구간은 조회 시각 `at`에서 거꾸로 자른다(`(start, start+10분]`). 1시간 누적은 10분 구간 6개 합. 구간의 차 절반 이상이 수동 연속 5단이면 포화(`saturated_min`). `at`보다 늦은 이벤트는 쓰지 않는다. 원시 이벤트는 2시간 뒤 삭제 | `grid.py`, `rainmap.py` | `test_rainmap.py` |
 | V3 | 지하차도 위험 단계 | 칸 중심이 반경 1 km(하버사인) 안인 칸들의 최대 세기·누적으로 NONE / CAUTION / WARNING / DANGER. 기준은 이상(≥). 위험도 높은 곳은 기준 × 0.75. 기준표는 `level_from`으로 V9도 쓴다. `load_underpasses`는 C2의 `gu`·`warning_area`까지 읽는다(V7, V9용) | `underpass.py` | `test_underpass.py` |
-| V4 | HTTP API | C1 계약 그대로. 배치를 받기 전 서버 시계보다 5분 넘게 미래인 이벤트 거부(시계가 없으면 받음). 시각에 시간대가 없으면 422. 배치마다 오래된 이벤트 정리. 뷰어용 차량 조회는 최근 5분 안에 보낸 차만. `/v1/underpass-risk`는 아직 와이퍼만(`reasons`·`alerts`는 4c). 실제 서버(uvicorn)로 모든 엔드포인트 호출 확인 | `api.py` (`uvicorn wipernet_server.api:app --port 8000`) | `test_api.py` |
+| V4 | HTTP API | C1 계약 그대로. 배치를 받기 전 서버 시계보다 5분 넘게 미래인 이벤트 거부(시계가 없으면 받음). 시각에 시간대가 없으면 422. 배치마다 오래된 이벤트 정리. 뷰어용 차량 조회는 최근 5분 안에 보낸 차만. `/v1/underpass-risk`는 V9 `fuse` 결과(서버 시계가 없으면 모두 NONE). `/v1/external`은 발효 중 특보와 최근 2시간 재난문자. 외부 자료 출처는 `WIPERNET_EXTERNAL=replay\|live\|off`(기본 replay, live는 키가 없으면 시작 실패). 실제 서버(uvicorn)로 모든 엔드포인트 호출 확인(4c는 replay로 확인) | `api.py` (`uvicorn wipernet_server.api:app --port 8000`) | `test_api.py` |
 | V5 | 메모리 저장소 | 서버 상태(비 지도, 서버 시계, 차별 마지막 이벤트)를 메모리에만 둔다. 차별 마지막 이벤트도 2시간 뒤 지운다. DB·Alembic은 공모전 범위 밖(설계 6.9). 저장 방식을 바꿀 때는 이 파일만 바꾼다 | `store.py` | `test_api.py`로 간접 |
 | V6 | 뷰어 | `/viewer`. Leaflet 1.9.4 지도, 1초마다 차량 점·비 칸·지하차도 마커(근거 포함) 갱신, 위쪽에 특보·재난문자 한 줄. 영상 녹화용 | `viewer/index.html` | `test_api.py::test_viewer_served` |
 | V7 | 공식 알림 | 호우특보는 기상청 API허브(`wrn_met_data.php`)에서 받아 구역별 주의보·경보 기간으로 만든다(예비특보 제외, 단계가 바뀌면 앞 단계를 닫음). 실시간은 60초 캐시, 실패하면 마지막 결과. 재난문자는 보도로 정리한 기록 재생만(실시간 API는 2023년 이후 자료·상업적 이용 금지라 연동 안 함, D2). 기록 재생은 `at` 뒤에 알 수 있는 것(늦은 문자, 해제 시각)을 감춘다. 재난문자는 본문의 지하차도 이름 + 통제·침수 낱말이면 `closure`, 그 구 또는 서울특별시 전체의 호우·폭우·침수 안내면 `rain` | `external/official.py`, `backend/scripts/fetch_kma_warnings.py` | `test_official.py` |
 | V8 | 레이더 | 기상청 API허브 HSR 합성 반사도(이진)를 Marshall-Palmer(Z=200R^1.6, 가정)로 mm/h로 바꿔 와이퍼넷 칸별 평균을 낸다. 에코 없음은 0, 관측 영역 밖은 값 없음. 데모 지역 칸의 격자점은 파일로 둔다. 기록 재생은 10분 구간(5분 장면 2개 평균)을 마지막 장면이 찍힌 뒤부터 쓴다. 실시간은 가장 최근 장면을 5분마다 받고, 실패하면 마지막 결과. 센 비에서 AWS의 약 40%로 적게 잡는다(D2). 시뮬레이터 입력으로는 쓰지 않는다 | `external/radar.py`, `backend/scripts/fetch_radar.py` | `test_radar.py` |
-| V9 | 합치기 | 출처별 단계의 최댓값(위험은 올리기만). 와이퍼 포화 구간은 레이더 값이 더 크면 대체. 레이더만 최대 WARNING, 특보 최대 CAUTION, 재난문자 통제 DANGER·호우 안내 CAUTION. 근거 `reasons`를 함께 낸다. `WIPERNET_EXTERNAL=replay\|live\|off` | `fusion.py` | `test_fusion.py` |
+| V9 | 합치기 | 출처별 단계의 최댓값(위험은 올리기만). 와이퍼 포화 구간은 그 구간이 끝난 시각의 레이더 값이 더 크면 대체해 세기·누적을 다시 계산. 레이더만(반경 안 칸, 누적은 10분 구간 6개) 최대 WARNING, 특보 CAUTION, 최근 2시간(가정치) 재난문자 통제 DANGER·호우 안내 CAUTION. `reasons`는 NONE보다 높은 단계를 낸 출처 모두, `alerts`는 이 지하차도에 연결된 문자. `mmph_10m`·`acc1h_mm`은 와이퍼와 레이더 중 큰 값. 실시간 레이더는 최신 장면만 있어 누적이 지금 세기와 같다(세기 기준이 먼저 닿아 단계는 바뀌지 않음) | `fusion.py` | `test_fusion.py`, `test_api.py` |
 
 ## 5. 차량 앱 (`car-app/`, 패키지 `ai.wipernet.car`)
 
@@ -139,7 +139,7 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 |---|---|---|---|---|---|
 | A1 | 동의·설정 | 첫 실행 동의 화면("동의" 버튼으로만). 기본 데모 모드. 차량 준비 항목별 켜기/끄기. 철회하면 전송 중지·큐 삭제 | `settings/Settings.kt`, `ui/ConsentScreen.kt`, `ui/SettingsScreen.kt`, `MainActivity.kt` | `SettingsTest` | — |
 | A2 | 앞쪽 지하차도 찾기 | 내비 TBT가 지하차도 진입이면 그 거리 앞 300 m 안의 지하차도. 아니면 2 km 안, 진행 방향 ±30° | `core/UpcomingUnderpassDetector.kt` | `UpcomingUnderpassDetectorTest` | — |
-| A3 | 위험 판단 | 기어 P면 아무것도 안 함. WARNING 이상 → 경고 + 우회 제안, CAUTION → 안내. 같은 지하차도 5분 쿨다운(단계가 오르면 바로). 거절하면 단계가 오를 때만 다시. 앞 1~3분 거리에 10 mm/h 이상 칸 → 차량 준비(10분에 한 번) | `core/Model.kt`, `core/HazardDecider.kt` | `HazardDeciderTest` | — |
+| A3 | 위험 판단 | 기어 P면 아무것도 안 함. WARNING 이상 → 경고 + 우회 제안, CAUTION → 안내(사용자 결정 2026-11-06: 호우특보만으로 CAUTION이어도 안내한다. 2022-08-08 재현은 12:50부터 호우경보라 데모 내내 모든 지하차도가 CAUTION이다). 같은 지하차도 5분 쿨다운(단계가 오르면 바로). 거절하면 단계가 오를 때만 다시. 앞 1~3분 거리에 10 mm/h 이상 칸 → 차량 준비(10분에 한 번) | `core/Model.kt`, `core/HazardDecider.kt` | `HazardDeciderTest` | — |
 | A4 | 차량 신호 | 와이퍼(Vehicle SDK, capability 확인), 위치(FusedLocation, 안 되면 NaviHelper), 기어, TBT(NaviHelper), 창문, 길안내 중인지(NaviHelper, 없으면 최근 30초 TBT). 데모 모드는 C3를 시간대로 재생 | `data/VehicleSignals.kt`, `data/PleosVehicleSignals.kt`, `data/ReplayVehicleSignals.kt` | `ScenarioTest`(재생만) | — |
 | A5 | 업로드 큐·임시 ID | 파일 큐, 최대 5,000건(넘으면 가장 오래된 것부터 버림), 한 번에 200건, 실패하면 남기고 순서 유지. 임시 ID 15분 회전. 동의 없으면 안 보냄 | `data/UploadQueue.kt`, `data/TempId.kt` | `UploadQueueTest`, `TempIdTest` | — |
 | A6 | 위험 정보 클라이언트 | 라이브: 5초마다 조회(서버 시계 포함), 2번 연속 실패면 오프라인, 내 차 3 km 칸만 보관. 데모: C3 재생 | `data/HazardClient.kt`, `data/LiveHazardClient.kt`, `data/ReplayHazardClient.kt`, `data/Scenario.kt` | `HazardClientTest` | — |
@@ -217,6 +217,8 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 **그 밖의 위험**
 - AUTO 세기 추정식(V1, S4)은 검증하지 않은 가정이다.
 - 와이퍼는 60 mm/h를 넘는 비를 구분하지 못한다(V1 상한). 레이더(V8)가 없으면 1시간 누적은 최대 60 mm라 누적 기준 "위험"(80 mm)에 닿지 않는다. 세기 기준으로는 위험 단계가 나온다(설계 6.10.2).
+- 차가 없어도 기록 재생 레이더만으로 20:00(사평)·20:30(6곳 모두)에 WARNING이 나온다. 와이퍼(AWS 강우장, 실시간)가 먼저 WARNING을 내는지는 시뮬레이터(S7, Task 10)로 확인한다. 데모 첫 경고(WARNING, 우회 제안)가 와이퍼에서 나와야 한다(설계 2장). 데모 시나리오는 비가 세지기 전에 출발한다. 특보 CAUTION 안내는 그보다 먼저 나와도 된다.
+- 호우경보는 몇 시간씩 이어져 5분 쿨다운이면 같은 지하차도 CAUTION 안내가 되풀이될 수 있다. Task 12에서 "CAUTION은 지하차도마다 한 번, 단계가 오를 때만 다시"를 검토한다.
 - 레이더(V8)는 2022-08-08 센 비를 AWS의 약 40%로 적게 잡아, 이날 데모 지역에서 60 mm/h를 거의 넘지 않는다. 그래서 4c의 "포화 구간 레이더 대체"는 이날 거의 일어나지 않는다. 레이더는 차 없는 칸 보완과 비 시작·그침 시각 확인에 주로 쓰인다.
 - 임시 ID 회전 때문에 천천히 움직이는 차가 10분 동안 두 대로 세질 수 있다. 익명성 때문에 구조는 두고 S6에서 비율을 잰다.
 - 외부 자료 Task 3개가 늘어 일정이 빠듯하다. 레이더(V8)가 가장 무겁다.
