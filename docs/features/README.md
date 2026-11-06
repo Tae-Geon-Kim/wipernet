@@ -3,7 +3,7 @@
 > 에이전트는 **구현 전에** 이 문서를 읽고, **구현 후에** 같은 PR에서 고친다 ([CLAUDE.md](../../CLAUDE.md) 5장).
 > 이 문서는 지금 상태만 적는다. 바뀐 내역은 git과 PR에 남는다.
 
-- 마지막 갱신: 2026-11-06, 브랜치 `feat/task-04c-fusion` (Task 4c)
+- 마지막 갱신: 2026-11-06, 브랜치 `feat/task-05-rainfield` (Task 5)
 - 근거: [설계](../2026-10-30-wipernet-design.md), [구현 계획](../superpowers/plans/2026-10-30-wipernet.md)
 
 ## 상태 표기
@@ -31,8 +31,8 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 
 | 영역 | ID | 기능 | 상태 | 계획 Task |
 |---|---|---|---|---|
-| 시뮬레이터 | S1 | 기상청 AWS 자료 정규화 | 📐 | 5 |
-| | S2 | 강우장 (역거리가중, 관측소 70/30 분할) | 📐 | 5 |
+| 시뮬레이터 | S1 | 기상청 AWS 자료 받기·정규화 | ✅ | 5 |
+| | S2 | 강우장 (역거리가중, 관측소 21곳) | 🧪 | 5 |
 | | S3 | 도로망과 차량 이동 | 📐 | 6 |
 | | S4 | 운전자 와이퍼 행동 (수동·AUTO·고장 차) | 📐 | 7 |
 | | S5 | 업로드 규칙과 차량 무리 실행 (fleet, runner) | 📐 | 7 |
@@ -68,7 +68,7 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 | | C3 | 데모 시나리오 `scenario.json` | 📐 | 10 |
 | | C4 | 와이퍼 스위치·상태 값 | 🧪 (V1 `wiper.py`) | 1 |
 | | C5 | 업로드 규칙 판정 사례 `shared/upload_policy_cases.json` | 빈 파일 (Task 7에서 채움) | 7, 15 |
-| | C6 | 외부 자료 기록 (2022-08-08 특보·재난문자·레이더) | 특보·재난문자·레이더 정리 | 4a, 4b |
+| | C6 | 2022-08-08 자료 기록 (특보·재난문자·레이더·AWS) | 특보·재난문자·레이더·AWS 정리 | 4a, 4b, 5 |
 | 제출물 | D1 | README | 초안 (🚧 표시 남음) | 16 |
 | | D2 | SDK·에뮬레이터·외부 자료 확인 기록 `docs/setup-status.md` | 외부 자료 확인 (SDK·에뮬레이터는 미확인) | 0, 13, 14 |
 | | D3 | 영상 대본, 제출 점검표 | 📐 | 16 |
@@ -82,6 +82,7 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 |---|---|
 | C4 와이퍼 값 목록·세기표 | V1, S4 `MMPH_TO_SWITCH`, A4 `PleosVehicleSignals`, A16, C3 |
 | `auto_wpm` (AUTO 와이퍼 횟수) | V1, V2, C1, S4, S5, A16 `AutoWipeCounter` |
+| S1 정규화 CSV 열 (`ts` = 구간 시작) | S2 `load_norm`, S6 |
 | V2 `CellEstimate` 필드 (`bins`, `saturated_min` 포함) | V3, V9, V4, C1, V6, S6, S7, A6 |
 | V9 단계 규칙·`reasons` 값 | V4, C1, V6, S6, S7, C3, A3 `Model.kt`, A11 고정 문구 |
 | C5 업로드 규칙 사례 | S5 `should_send`, A16 `UploadPolicy` (둘 다 같은 파일로 테스트) |
@@ -109,13 +110,13 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 
 | ID | 기능 | 동작 | 코드 위치 | 테스트 |
 |---|---|---|---|---|
-| S1 | AWS 자료 정규화 | 내려받은 원자료를 `station_id,station_name,lat,lng,ts,mmph` 10분 간격 CSV로 바꾼다. 시간 자료면 6구간에 똑같이 나눈다 | `backend/scripts/normalize_kma.py` → `backend/data/kma_20220808_norm.csv` | — |
-| S2 | 강우장 | 학습용 관측소만으로 역거리가중(거듭제곱 2). 관측소 30%는 검증용으로 숨긴다(seed 7) | `rainfield.py` | `test_rainfield.py` |
+| S1 | AWS 자료 받기·정규화 | API허브에서 데모 지역 사방 0.08°(약 8 km) 안 AWS 22곳의 2022-08-08 매분자료를 받는다(지역 안은 서초 하나뿐). `station_id,station_name,lat,lng,ts,mmph` 10분 간격 CSV로 바꾼다. `ts`는 구간 시작, mmph는 일 누적(RN-DAY) 차이 × 6. 양 끝 값이 없거나 차이가 음수인 구간은 뺀다. 오전동(366)은 값이 없어 21곳. 실제 자료로 실행해 서초 20~21시 92.0 mm(RN-60m과 같음)를 확인 | `backend/scripts/fetch_kma_aws.py` → `backend/data/raw/kma/`(커밋 안 함), `backend/scripts/normalize_kma.py` → `backend/data/kma_20220808_norm.csv` | `test_rainfield.py::test_load_norm_reads_committed_csv` |
+| S2 | 강우장 | 받은 관측소로 역거리가중(거듭제곱 2). 시각이 속한 10분 구간에 값이 있는 관측소만 쓰고, 하나도 없으면 오류. 데모는 21곳 전부를 쓰고, 검증(S6)은 하나씩 뺀 목록을 넘긴다 | `rainfield.py` | `test_rainfield.py` |
 | S3 | 도로망·이동 | OSM 도로망 위 임의 경로(서로 오갈 수 있는 가장 큰 덩어리만). 속도 = 간선 제한속도(없으면 30) × 0.5. 도착하면 새 경로. `route_through`는 지하차도를 지나는 내 차 경로 | `roads.py`, `backend/scripts/fetch_roads.py` → `backend/data/gangnam_drive.graphml` | `test_roads.py` |
 | S4 | 운전자 와이퍼 | 비 세기 → 스위치 단계(0.5 mm/h 미만은 꺼짐). 개인차 ±1단계. 차량 25%는 AUTO(최근 60초 와이퍼 횟수 `auto_wpm`을 보냄), 1%는 비와 상관없이 연속 5단인 고장 차 | `driver.py` | `test_driver.py` |
 | S5 | 업로드 규칙·차량 무리 실행 | 앱 A16과 같은 업로드 규칙(C5로 테스트). 차량 40%는 길안내 중이라 꺼져도 5분마다 "꺼짐"을 보냄. 현재 100대 / 미래 1,500대. 임시 ID 15분 회전(차마다 엇갈림). `fleet.py`가 이벤트를 만들고 실행기·검증·데모 내보내기가 같이 쓴다. 실행기는 시작할 때 서버 초기화, `--slow-from`으로 구간별 속도 | `upload_policy.py`, `fleet.py`, `runner.py` (`python -m wipernet_sim.runner`) | `test_upload_policy.py`, `test_fleet.py`, `test_runner.py` |
-| S6 | 검증 리포트 | (a) 재현: 모든 칸 기준 적중률, 60 mm/h 이하·초과로 나눈 오차, 커버리지, 고장 차 오경보, ID 회전 중복, 밀도 두 가지 비교 (b) 현실성: 숨긴 관측소 비교 (c) 와이퍼 추정 vs 레이더 (d) 와이퍼만 / 외부만 / 둘 다의 지하차도 경고 시각 | `validate.py` → `docs/validation.md` | `test_validate.py` |
-| S7 | 데모 시나리오 | 내 차가 위험도 높은 지하차도를 약 6분 달린다. 17~21시에서 "차량 준비 조건 → 3분쯤 그 지하차도 WARNING 이상(근거에 `vehicles`)" 순서가 나오는 구간을 고른다. 우회 경로(`bypass`)도 내보낸다 | `export_demo.py` → C3 | `test_export_demo.py` |
+| S6 | 검증 리포트 | (a) 재현: 모든 칸 기준 적중률, 60 mm/h 이하·초과로 나눈 오차, 커버리지, 고장 차 오경보, ID 회전 중복, 밀도 두 가지 비교 (b) 현실성: 관측소 하나씩 빼 보기(강남·서초 따로) (c) 와이퍼 추정 vs 레이더 (d) 와이퍼만 / 외부만 / 둘 다의 지하차도 경고 시각 | `validate.py` → `docs/validation.md` | `test_validate.py` |
+| S7 | 데모 시나리오 | 내 차는 내비 길안내 중이고, 그 경로가 위험도 높은 지하차도를 지난다(약 6분). 17~21시에서 "차량 준비 조건 → 3분쯤 그 지하차도 WARNING 이상(근거에 `vehicles`)" 순서가 나오는 구간을 고른다. 우회 경로(`bypass`)도 내보낸다 | `export_demo.py` → C3 | `test_export_demo.py` |
 
 ## 4. 서버 (`backend/wipernet_server`)
 
@@ -163,7 +164,7 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 | C3 | 데모 시나리오 (`start, step_s, my_car[], bypass, hazards[]`) | `car-app/app/src/main/assets/demo/scenario.json` | S7 | A4, A6 |
 | C4 | 와이퍼 값: 스위치 `OFF, AUTO, MIST, INTERMITTENT_LEVEL_1~5, CONTINUOUS_LEVEL_1~5, SERVICE, OTHER` / 상태 `ON, OFF, SERVICE, OTHER` | V1 `wiper.py`가 기준 | Pleos Vehicle SDK | V1, S4, A4 |
 | C5 | 업로드 규칙 판정 사례 | `shared/upload_policy_cases.json` | S5 (Task 7) | S5, A16 테스트 |
-| C6 | 2022-08-08 외부 자료 기록 (특보, 재난문자 손 정리·출처 포함, 레이더 칸별 값) | `backend/data/kma_warnings_20220808.json`, `backend/data/alerts_20220808.json`, `backend/data/radar_20220808_cells.csv`, 레이더 격자점 `backend/data/radar_grid_gangnam.csv` | V7, V8 스크립트 | V7, V8 기록 재생, S6, S7 |
+| C6 | 2022-08-08 자료 기록 (특보, 재난문자 손 정리·출처 포함, 레이더 칸별 값, AWS 10분 강수) | `backend/data/kma_warnings_20220808.json`, `backend/data/alerts_20220808.json`, `backend/data/radar_20220808_cells.csv`, 레이더 격자점 `backend/data/radar_grid_gangnam.csv`, AWS `backend/data/kma_20220808_norm.csv` | V7, V8, S1 스크립트 | V7, V8 기록 재생, S2, S6, S7 |
 
 ## 7. 핵심 상수 (바꾸면 테스트와 기획서 숫자가 같이 바뀐다)
 
@@ -173,6 +174,7 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 | 칸 값을 내는 최소 차량 수 3대, 집계 창 10분 | V2 |
 | 원시 이벤트 보관 2시간, 임시 ID 15분 | V2, S5, A5 |
 | 지하차도 반경 1 km, 단계 기준 20/40/60 mm/h · 30/50/80 mm, 위험도 높음 × 0.75 | V3 |
+| 강우장 관측소: 데모 지역 사방 0.08° 안 AWS (21곳), 역거리가중 거듭제곱 2 | S1, S2 |
 | 차량 밀도 현재 100대 / 미래 1,500대, AUTO 25%, 길안내 중 40%, 고장 차 1% (가정치) | S4, S5 |
 | 운전자 와이퍼 꺼짐 기준 0.5 mm/h 미만 | S4 |
 | 최고 단계 = 수동 연속 5단(세기 1.0, AUTO는 제외), 칸의 차 절반 이상이면 포화, 30분 넘으면 근거 `saturated` | V1, V2, V9 |
@@ -216,6 +218,7 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 
 **그 밖의 위험**
 - AUTO 세기 추정식(V1, S4)은 검증하지 않은 가정이다.
+- **시뮬레이션의 한계이자 기획서 근거:** 데모 지역 안 AWS는 서초(401) 하나다. 서초를 빼고 주변 관측소로 메우면 20~21시 평균이 약 56 mm/h로 실제 92 mm/h보다 약 40% 낮다(미리 본 값, S6에서 정식으로 잰다). 관측소 사이를 메울 필요가 있다는 실측 근거다. 다만 시뮬레이터 차는 이 강우장으로 와이퍼를 돌리므로 "와이퍼가 관측소가 놓친 비를 잡는다"는 시뮬레이션으로 증명하지 않는다(설계 6.5-1).
 - 와이퍼는 60 mm/h를 넘는 비를 구분하지 못한다(V1 상한). 레이더(V8)가 없으면 1시간 누적은 최대 60 mm라 누적 기준 "위험"(80 mm)에 닿지 않는다. 세기 기준으로는 위험 단계가 나온다(설계 6.10.2).
 - 차가 없어도 기록 재생 레이더만으로 20:00(사평)·20:30(6곳 모두)에 WARNING이 나온다. 와이퍼(AWS 강우장, 실시간)가 먼저 WARNING을 내는지는 시뮬레이터(S7, Task 10)로 확인한다. 데모 첫 경고(WARNING, 우회 제안)가 와이퍼에서 나와야 한다(설계 2장). 데모 시나리오는 비가 세지기 전에 출발한다. 특보 CAUTION 안내는 그보다 먼저 나와도 된다.
 - 호우경보는 몇 시간씩 이어져 5분 쿨다운이면 같은 지하차도 CAUTION 안내가 되풀이될 수 있다. Task 12에서 "CAUTION은 지하차도마다 한 번, 단계가 오를 때만 다시"를 검토한다.
