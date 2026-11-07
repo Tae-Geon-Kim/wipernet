@@ -12,6 +12,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from pydantic import AwareDatetime, BaseModel
 
 from .external.official import LiveOfficialSource, OfficialSource, ReplayOfficialSource
@@ -24,6 +25,7 @@ from .underpass import assess, load_underpasses
 
 UNDERPASSES_PATH = Path(__file__).resolve().parents[2] / "shared" / "underpasses_gangnam.json"
 DATA = Path(__file__).resolve().parents[1] / "data"
+VIEWER = Path(__file__).resolve().parent / "viewer" / "index.html"
 MAX_FUTURE = timedelta(minutes=5)
 VIEWER_RECENT = timedelta(minutes=5)
 
@@ -104,6 +106,10 @@ def create_app(external: str | None = None) -> FastAPI:
     @app.get("/v1/debug/vehicles")
     def debug_vehicles():
         return {"vehicles": [asdict(e) for e in store.recent_vehicles(VIEWER_RECENT)]}
+
+    @app.get("/viewer", include_in_schema=False)
+    def viewer():
+        return FileResponse(VIEWER, media_type="text/html")
 
     @app.post("/v1/reset")
     def reset():
