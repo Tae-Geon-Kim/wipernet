@@ -32,6 +32,7 @@ class Underpass:
     bypass_waypoint: dict | None
     gu: str
     warning_area: str | None
+    osm_ways: list[int] = field(default_factory=list)  # 시뮬레이터 도로망에서 이 지하차도 간선을 찾는다(S3)
 
 
 @dataclass

@@ -3,7 +3,7 @@
 > 에이전트는 **구현 전에** 이 문서를 읽고, **구현 후에** 같은 PR에서 고친다 ([CLAUDE.md](../../CLAUDE.md) 5장).
 > 이 문서는 지금 상태만 적는다. 바뀐 내역은 git과 PR에 남는다.
 
-- 마지막 갱신: 2026-11-06, 브랜치 `feat/task-05-rainfield` (Task 5)
+- 마지막 갱신: 2026-11-07, 브랜치 `feat/task-06-roads` (Task 6)
 - 근거: [설계](../2026-10-30-wipernet-design.md), [구현 계획](../superpowers/plans/2026-10-30-wipernet.md)
 
 ## 상태 표기
@@ -33,7 +33,7 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 |---|---|---|---|---|
 | 시뮬레이터 | S1 | 기상청 AWS 자료 받기·정규화 | ✅ | 5 |
 | | S2 | 강우장 (역거리가중, 관측소 21곳) | 🧪 | 5 |
-| | S3 | 도로망과 차량 이동 | 📐 | 6 |
+| | S3 | 도로망과 차량 이동 | 🧪 | 6 |
 | | S4 | 운전자 와이퍼 행동 (수동·AUTO·고장 차) | 📐 | 7 |
 | | S5 | 업로드 규칙과 차량 무리 실행 (fleet, runner) | 📐 | 7 |
 | | S6 | 검증 리포트 | 📐 | 9 |
@@ -90,7 +90,7 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 | A4 `VehicleSignals` (`guiding` 포함) | A12, A16, `PleosVehicleSignals`, `ReplayVehicleSignals` |
 | V3 `UnderpassRisk` 필드·단계 기준 | V4, C1, V6, S7(경고 시각 탐색), A3, A6, A12 `Model.kt` |
 | C1 API 계약 | V4, S5, A5, A6, V6 |
-| C2 지하차도 목록 (`gu`, `warning_area` 포함) | V3, V7 `classify_alert`, V9, S3 `route_through`, S7 |
+| C2 지하차도 목록 (`gu`, `warning_area`, `osm_ways` 포함) | V3, V7 `classify_alert`, V9, S3 `route_through`, S7 |
 | C3 시나리오 스키마 | S7, A4 `ReplayVehicleSignals`, A6 `ReplayHazardClient`, `Scenario.kt` |
 | A1 `Settings` | A3, A8, A12, 설정 화면 |
 | A3 `Action` 종류 | A11, A12, A15(경고 알림) |
@@ -112,7 +112,7 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 |---|---|---|---|---|
 | S1 | AWS 자료 받기·정규화 | API허브에서 데모 지역 사방 0.08°(약 8 km) 안 AWS 22곳의 2022-08-08 매분자료를 받는다(지역 안은 서초 하나뿐). `station_id,station_name,lat,lng,ts,mmph` 10분 간격 CSV로 바꾼다. `ts`는 구간 시작, mmph는 일 누적(RN-DAY) 차이 × 6. 양 끝 값이 없거나 차이가 음수인 구간은 뺀다. 오전동(366)은 값이 없어 21곳. 실제 자료로 실행해 서초 20~21시 92.0 mm(RN-60m과 같음)를 확인 | `backend/scripts/fetch_kma_aws.py` → `backend/data/raw/kma/`(커밋 안 함), `backend/scripts/normalize_kma.py` → `backend/data/kma_20220808_norm.csv` | `test_rainfield.py::test_load_norm_reads_committed_csv` |
 | S2 | 강우장 | 받은 관측소로 역거리가중(거듭제곱 2). 시각이 속한 10분 구간에 값이 있는 관측소만 쓰고, 하나도 없으면 오류. 데모는 21곳 전부를 쓰고, 검증(S6)은 하나씩 뺀 목록을 넘긴다 | `rainfield.py` | `test_rainfield.py` |
-| S3 | 도로망·이동 | OSM 도로망 위 임의 경로(서로 오갈 수 있는 가장 큰 덩어리만). 속도 = 간선 제한속도(없으면 30) × 0.5. 도착하면 새 경로. `route_through`는 지하차도를 지나는 내 차 경로 | `roads.py`, `backend/scripts/fetch_roads.py` → `backend/data/gangnam_drive.graphml` | `test_roads.py` |
+| S3 | 도로망·이동 | OSM 차도망(데모 지역 사방 0.015°, 노드 8,012·간선 21,710, 서로 오갈 수 있는 가장 큰 덩어리만). 임의 출발·도착 최단경로를 간선 모양대로 달리고 진행 방향을 낸다. 속도 = 간선 `speed_kph`(osmnx가 maxspeed·도로 종류 평균으로 채움, 없으면 30) × 0.5. 도착하면 그 자리에서 새 경로. 지하차도 간선은 C2 `osm_ways`로 찾는다. `route_through`는 내 차 길안내 경로: 출발지→목적지 최단경로가 저절로 지하차도를 지나는 쌍(입구 전 약 2.5 km, 출구 뒤 약 1 km, Task 10에서 조정). 실제 도로망에서 6곳 모두 경로를 찾고, 100대를 1시간 굴려 지역 안 비율 약 71% | `roads.py`, `backend/scripts/fetch_roads.py` → `backend/data/gangnam_drive.graphml` | `test_roads.py` |
 | S4 | 운전자 와이퍼 | 비 세기 → 스위치 단계(0.5 mm/h 미만은 꺼짐). 개인차 ±1단계. 차량 25%는 AUTO(최근 60초 와이퍼 횟수 `auto_wpm`을 보냄), 1%는 비와 상관없이 연속 5단인 고장 차 | `driver.py` | `test_driver.py` |
 | S5 | 업로드 규칙·차량 무리 실행 | 앱 A16과 같은 업로드 규칙(C5로 테스트). 차량 40%는 길안내 중이라 꺼져도 5분마다 "꺼짐"을 보냄. 현재 100대 / 미래 1,500대. 임시 ID 15분 회전(차마다 엇갈림). `fleet.py`가 이벤트를 만들고 실행기·검증·데모 내보내기가 같이 쓴다. 실행기는 시작할 때 서버 초기화, `--slow-from`으로 구간별 속도 | `upload_policy.py`, `fleet.py`, `runner.py` (`python -m wipernet_sim.runner`) | `test_upload_policy.py`, `test_fleet.py`, `test_runner.py` |
 | S6 | 검증 리포트 | (a) 재현: 모든 칸 기준 적중률, 60 mm/h 이하·초과로 나눈 오차, 커버리지, 고장 차 오경보, ID 회전 중복, 밀도 두 가지 비교 (b) 현실성: 관측소 하나씩 빼 보기(강남·서초 따로) (c) 와이퍼 추정 vs 레이더 (d) 와이퍼만 / 외부만 / 둘 다의 지하차도 경고 시각 | `validate.py` → `docs/validation.md` | `test_validate.py` |
@@ -160,7 +160,7 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 | ID | 무엇 | 위치 | 만드는 곳 | 쓰는 곳 |
 |---|---|---|---|---|
 | C1 | API 계약 (엔드포인트, 요청·응답 모양. 이벤트 `auto_wpm`, 위험 응답 `reasons`·`alerts`, `/v1/external`) | `docs/api.md` | V4, V9 | S5, A5, A6, V6 |
-| C2 | 강남 지하차도 목록 (`id, name, lat, lng, base_risk, bypass_waypoint, gu, warning_area`). 6곳: 개포(high), 구룡, 대모, 사평, 양재, 양재천. 특보구역은 모두 서울동남권 `L1100100` | `shared/underpasses_gangnam.json`, 근거 `shared/underpasses_gangnam.md`, 만드는 스크립트 `backend/scripts/fetch_underpasses.py` | 손 정리 + OSM | V3, V7, V9, S3, S7 |
+| C2 | 강남 지하차도 목록 (`id, name, lat, lng, base_risk, bypass_waypoint, gu, warning_area, osm_ways`). `osm_ways`는 시뮬레이터 도로망에서 지하차도 간선을 찾는 OSM way 번호(S3). 6곳: 개포(high), 구룡, 대모, 사평, 양재, 양재천. 특보구역은 모두 서울동남권 `L1100100` | `shared/underpasses_gangnam.json`, 근거 `shared/underpasses_gangnam.md`, 만드는 스크립트 `backend/scripts/fetch_underpasses.py` | 손 정리 + OSM | V3, V7, V9, S3, S7 |
 | C3 | 데모 시나리오 (`start, step_s, my_car[], bypass, hazards[]`) | `car-app/app/src/main/assets/demo/scenario.json` | S7 | A4, A6 |
 | C4 | 와이퍼 값: 스위치 `OFF, AUTO, MIST, INTERMITTENT_LEVEL_1~5, CONTINUOUS_LEVEL_1~5, SERVICE, OTHER` / 상태 `ON, OFF, SERVICE, OTHER` | V1 `wiper.py`가 기준 | Pleos Vehicle SDK | V1, S4, A4 |
 | C5 | 업로드 규칙 판정 사례 | `shared/upload_policy_cases.json` | S5 (Task 7) | S5, A16 테스트 |
@@ -175,7 +175,8 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 | 원시 이벤트 보관 2시간, 임시 ID 15분 | V2, S5, A5 |
 | 지하차도 반경 1 km, 단계 기준 20/40/60 mm/h · 30/50/80 mm, 위험도 높음 × 0.75 | V3 |
 | 강우장 관측소: 데모 지역 사방 0.08° 안 AWS (21곳), 역거리가중 거듭제곱 2 | S1, S2 |
-| 차량 밀도 현재 100대 / 미래 1,500대, AUTO 25%, 길안내 중 40%, 고장 차 1% (가정치) | S4, S5 |
+| 차량 밀도 현재 100대 / 미래 1,500대(데모 지역 안 기준), AUTO 25%, 길안내 중 40%, 고장 차 1% (가정치) | S4, S5 |
+| 도로망 범위 데모 지역 사방 0.015°, 차 속도 = 간선 속도 × 0.5(기본 30 km/h) | S3 |
 | 운전자 와이퍼 꺼짐 기준 0.5 mm/h 미만 | S4 |
 | 최고 단계 = 수동 연속 5단(세기 1.0, AUTO는 제외), 칸의 차 절반 이상이면 포화, 30분 넘으면 근거 `saturated` | V1, V2, V9 |
 | 레이더만 최대 WARNING, 특보·재난문자 호우 안내 최대 CAUTION, 재난문자 통제 DANGER, 재난문자 유효 2시간(가정치) | V9 |
