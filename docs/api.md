@@ -41,7 +41,7 @@
 
 | 필드 | 뜻 |
 |---|---|
-| `vid` | 임시 차량 ID. 15분마다 바뀌는 임의 UUID |
+| `vid` | 임시 차량 ID. 12~18분 사이 무작위 간격으로 바뀌는 임의 UUID(설계 6.11) |
 | `ts` | 이벤트 시각. 라이브 모드 앱은 마지막으로 받은 `/v1/clock` 값을 쓴다 |
 | `lat`, `lng` | 위치 (WGS84) |
 | `switch` | 와이퍼 스위치. `OFF`, `AUTO`, `MIST`, `INTERMITTENT_LEVEL_1`~`_5`, `CONTINUOUS_LEVEL_1`~`_5`, `SERVICE`, `OTHER` (Pleos Vehicle SDK 값 그대로) |
@@ -168,7 +168,11 @@
                "switch": "CONTINUOUS_LEVEL_3", "state": "ON", "auto_wpm": null}]}
 ```
 
-서버 시계 기준 최근 5분 안에 이벤트를 보낸 `vid`의 마지막 이벤트. 뷰어 전용이다.
+서버 시계 기준 최근 5분 안에 이벤트를 보낸 `vid`의 마지막 이벤트. 뷰어 전용이다. 임시 ID가 12~18분마다 바뀌므로 최근 5분 안에 ID가 바뀐 차는 두 번 나온다. 차 한 대씩 위치를 내보내므로 배포 서버에서는 끈다(설계 6.11).
+
+### `GET /viewer`
+
+시뮬레이션 뷰어 HTML(Task 8). `?density=current|future`를 붙이면 왼쪽 위에 밀도 이름을 보여 준다(서버는 밀도를 모른다). 위 `/v1/*`를 1초마다 읽는다. 배경 지도는 OSM 표준 타일이라 데모·개발 전용이다.
 
 ### `POST /v1/reset`
 
