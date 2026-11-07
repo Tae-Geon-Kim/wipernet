@@ -4,7 +4,7 @@
 
 ## 만드는 법
 
-1. `backend/scripts/fetch_underpasses.py`가 OSM에서 이름(`name` 또는 `tunnel:name`)에 "지하차도"·"지하도로"가 들어간 도로를 찾아 중심 좌표와 구를 낸다(2026-11-04 OSM 기준).
+1. `backend/scripts/fetch_underpasses.py`가 OSM에서 이름(`name` 또는 `tunnel:name`)에 "지하차도"·"지하도로"가 들어간 도로를 찾아 중심 좌표와 구, 그 도로들의 OSM way 번호(`osm_ways`)를 낸다(2026-11-04 OSM 기준, `osm_ways`는 2026-11-07에 같은 스크립트로 다시 받아 넣음). 시뮬레이터는 `osm_ways`로 도로망에서 지하차도 간선을 찾는다(S3). 좌표 거리로는 찾지 않는다. 개포에서 300 m 안에 구룡·대모 지하차도 간선도 들어온다.
 2. `base_risk`, `bypass_waypoint`, `id`는 사람이 정한다. 근거는 아래 표에 적는다.
 3. `warning_area`(기상청 특보구역 코드)는 6곳 모두 `L1100100`(서울동남권)이다. 강남구·서초구가 서울동남권에 속한다[^etoday]. 코드와 이름은 기상청 API허브 특보구역 조회(`wrn_reg.php`)로 확인했다. 서울동남권 구역은 2020-05-14부터 쓰인다.
 

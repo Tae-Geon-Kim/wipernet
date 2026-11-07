@@ -69,3 +69,15 @@
 - **빠진 구간:** 구간 양 끝의 값이 없거나 차이가 음수(센서 오류)면 그 줄은 없다. 빠진 값은 `docs/setup-status.md` AWS 절에 있다.
 - **바꾸는 방법:** 손으로 고치지 않는다. 스크립트를 다시 돌린다.
 - **쓰는 곳:** `wipernet_sim.rainfield`(S2). 이 파일은 외부 자료 기록 재생이 아니라 시뮬레이터 입력이다.
+
+## `gangnam_drive.graphml` — 시뮬레이터 도로망
+
+- **만든 방법:** `scripts/fetch_roads.py data/gangnam_drive.graphml` (2026-11-07 OSM).
+  - osmnx `graph_from_bbox`, `network_type="drive"`를 쓴다.
+  - 범위는 데모 지역을 사방 0.015° 넓힌 사각형이다. 서로 오갈 수 있는 가장 큰 덩어리만 남긴다.
+  - 노드 8,012개, 간선 21,710개다.
+- **출처:** © OpenStreetMap contributors, ODbL 1.0 (https://www.openstreetmap.org/copyright).
+- **바꾸는 방법:** 손으로 고치지 않는다. 스크립트를 다시 돌린다.
+  - OSM이 바뀌면 간선 번호가 달라질 수 있다.
+  - 다시 받은 뒤 `tests/test_roads.py::test_every_underpass_has_a_natural_route`로 지하차도 6곳(C2 `osm_ways`)이 남았는지 확인한다.
+- **쓰는 곳:** `wipernet_sim.roads`(S3).
