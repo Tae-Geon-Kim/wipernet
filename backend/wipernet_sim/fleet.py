@@ -20,7 +20,8 @@ FLEET_CURRENT = 100
 FLEET_FUTURE = 1500
 # 도로망이 데모 지역보다 넓어 임의 경로 차의 이만큼만 지역 안에 있다(2026-11-07, 100대 1시간 측정, Task 6)
 IN_AREA_FRAC = 0.71
-VID_ROTATE = timedelta(minutes=15)
+# 임시 ID를 바꾸는 간격. 매번 이 사이에서 무작위로 고른다(C-ITS 가명 교체처럼 고정값을 피해 옛 ID와 새 ID를 잇기 어렵게)
+VID_ROTATE_MIN, VID_ROTATE_MAX = timedelta(minutes=12), timedelta(minutes=18)
 
 
 @dataclass
@@ -54,15 +55,18 @@ class Fleet:
     def _new_vid(self) -> str:
         return str(uuid.UUID(int=self._rng.getrandbits(128), version=4))
 
+    def _rotate_gap(self) -> timedelta:
+        return VID_ROTATE_MIN + self._rng.random() * (VID_ROTATE_MAX - VID_ROTATE_MIN)
+
     def step(self, t: datetime, dt_s: float) -> list[tuple[int, dict]]:
         """모든 차를 dt_s초 움직이고, 시각 t에 보낼 이벤트를 (차 번호, API 이벤트)로 낸다. 차 번호는 서버로 보내지 않는다."""
         out = []
         now_s = t.timestamp()
         for i, car in enumerate(self.cars):
-            if car.rotate_at is None:  # 첫 step: 회전 시점을 차마다 0~15분 사이로 엇갈린다
-                car.vid, car.rotate_at = self._new_vid(), t + self._rng.random() * VID_ROTATE
+            if car.rotate_at is None:  # 첫 step: 첫 교체 시점을 차마다 0~18분 사이로 엇갈린다
+                car.vid, car.rotate_at = self._new_vid(), t + self._rng.random() * VID_ROTATE_MAX
             elif t >= car.rotate_at:
-                car.vid, car.rotate_at = self._new_vid(), car.rotate_at + VID_ROTATE
+                car.vid, car.rotate_at = self._new_vid(), car.rotate_at + self._rotate_gap()
             lat, lng, _ = car.mover.step(dt_s)
             d = car.driver.update(self.field.mmph(lat, lng, t))
             cell = cell_of(lat, lng)

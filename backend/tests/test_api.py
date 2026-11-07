@@ -156,3 +156,11 @@ def test_live_without_key_fails(monkeypatch):
     monkeypatch.delenv("KMA_API_HUBKEY", raising=False)
     with pytest.raises(RuntimeError):
         create_app(external="live")
+
+
+def test_viewer_served(client):
+    r = client.get("/viewer")
+    assert r.status_code == 200 and r.headers["content-type"].startswith("text/html")
+    assert "leaflet@1.9.4" in r.text
+    assert "https://tile.openstreetmap.org/{z}/{x}/{y}.png" in r.text       # OSM 타일 정책 1장: 정확한 주소
+    assert "openstreetmap.org/copyright" in r.text                         # 출처 표시와 라이선스 링크

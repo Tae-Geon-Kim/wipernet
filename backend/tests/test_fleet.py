@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from conftest import T0
 from wipernet_sim.fleet import FLEET_CURRENT, FLEET_FUTURE, IN_AREA_FRAC, Fleet
@@ -50,7 +50,7 @@ def test_vid_rotates_every_15_minutes_staggered(tiny_field_wet, tiny_graph):
     vids_per_car = {}
     for car, e in evs:
         vids_per_car.setdefault(car, set()).add(e["vid"])
-    assert all(2 <= len(v) <= 3 for v in vids_per_car.values())   # 첫 회전은 0~15분 사이 차마다 다르게
+    assert all(2 <= len(v) <= 3 for v in vids_per_car.values())   # 첫 교체는 0~18분 사이 차마다 다르게
     first_rotation = {min(e["ts"] for c, e in evs if c == car and e["vid"] != evs_first_vid(evs, car))
                       for car in vids_per_car}
     assert len(first_rotation) > 1   # 모두 같은 순간에 바뀌지 않는다
@@ -65,3 +65,19 @@ def test_same_seed_same_events(tiny_field_wet, tiny_graph):
     b = run_steps(Fleet(tiny_field_wet, tiny_graph, "current", seed=3), 12)
     c = run_steps(Fleet(tiny_field_wet, tiny_graph, "current", seed=4), 12)
     assert a == b and a != c
+
+
+def test_vid_rotation_interval_is_random_12_to_18_minutes(tiny_field_wet, tiny_graph):
+    f = Fleet(tiny_field_wet, tiny_graph, "current", stuck_frac=0)
+    evs = run_steps(f, 6 * 70, dt=10)   # 70분. 켜진 차는 60초마다 보내 ID가 바뀐 시각을 1분 안으로 안다
+    gaps = []
+    for car in range(len(f.cars)):
+        changes, prev = [], None
+        for c, e in evs:
+            if c == car:
+                if prev is not None and e["vid"] != prev:
+                    changes.append(datetime.fromisoformat(e["ts"]))
+                prev = e["vid"]
+        gaps += [(b - a).total_seconds() / 60 for a, b in zip(changes, changes[1:])]
+    assert gaps and all(11 <= g <= 19 for g in gaps)   # 60초 전송 간격만큼 여유
+    assert max(gaps) - min(gaps) > 3                    # 고정 간격이 아니다
