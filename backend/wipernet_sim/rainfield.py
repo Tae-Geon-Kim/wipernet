@@ -43,6 +43,7 @@ class RainField:
 
     def __init__(self, stations: list[Station], series: dict[str, list[tuple[datetime, float]]]):
         self.stations = stations
+        self.series = series
         self._values = {s.id: {_bin(ts): v for ts, v in series[s.id]} for s in stations}
 
     def mmph(self, lat: float, lng: float, t: datetime) -> float:
