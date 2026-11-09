@@ -68,6 +68,25 @@ class Mover:
                 self.follow(nx.shortest_path(self.g, origin, dest, weight="length"))
                 return
 
+    @property
+    def next_node(self):
+        """지금 간선의 끝 노드."""
+        return self.route[self._i + 1]
+
+    def speed_mps(self) -> float:
+        return _speed_mps(_edge(self.g, self.route[self._i], self.route[self._i + 1]))
+
+    def traveled_m(self) -> float:
+        """경로 처음부터 간 거리."""
+        done = sum(_edge(self.g, a, b)["length"] for a, b in zip(self.route[:self._i], self.route[1:self._i + 1]))
+        return done + self._pos_m
+
+    def reroute(self, rest: list) -> None:
+        """지금 간선은 끝까지 달리고, 그 끝 노드(rest[0])부터 rest를 따른다."""
+        if rest[0] != self.next_node:
+            raise ValueError("새 경로는 지금 간선의 끝 노드에서 시작해야 한다")
+        self.route = self.route[:self._i + 1] + rest
+
     def step(self, dt_s: float) -> tuple[float, float, float]:
         """dt_s초 달린 뒤 (lat, lng, heading). heading은 북쪽 0°, 시계 방향."""
         t = dt_s

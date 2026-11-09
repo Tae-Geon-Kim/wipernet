@@ -58,6 +58,18 @@ def test_mover_carries_over_to_next_edge():
     assert (lat - 37.50) * M_PER_DEG_LAT == pytest.approx(150, rel=0.02)
 
 
+def test_mover_reroute_keeps_current_edge_then_turns_back():
+    m = Mover(north_line(4, 100), rng=Random(0)); m.follow([0, 1, 2, 3])
+    m.step(30)                                   # 150 m: 간선 1→2 가운데
+    assert m.traveled_m() == pytest.approx(150)
+    assert m.speed_mps() == pytest.approx(5)
+    with pytest.raises(ValueError):
+        m.reroute([1, 0])                        # 지금 간선 끝(2)에서 시작해야 한다
+    m.reroute([2, 1, 0])
+    lat, _, _ = m.step(30)                       # 2까지 50 m 더 간 뒤 남쪽으로 100 m → 100 m 지점
+    assert (lat - 37.50) * M_PER_DEG_LAT == pytest.approx(100, rel=0.02)
+
+
 def test_mover_reroutes_at_end():
     g = line_graph(length_m=100, speed_kph=36)
     m = Mover(g, rng=Random(0)); m.random_route()
