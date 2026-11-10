@@ -1,56 +1,76 @@
 package ai.wipernet.car.core
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Test
 
 class UpcomingUnderpassDetectorTest {
     private val pos = Position(37.50, 127.03, headingDeg = 0.0, speedMps = 15.0)
+    private val enter = "TURN_ENTER_UNDER_C"
 
     private fun underpassNorth(id: String, km: Double) =
         UnderpassRisk(id, id, 37.50 + km * 0.009, 127.03, Level.WARNING, null)
 
+    private fun guided(tbts: List<Tbt>, vararg u: UnderpassRisk) =
+        UpcomingUnderpassDetector.detect(pos, tbts, guiding = true, underpasses = u.toList())
+
+    private fun heading(vararg u: UnderpassRisk) =
+        UpcomingUnderpassDetector.detect(pos, emptyList(), guiding = false, underpasses = u.toList())
+
     @Test
-    fun detectorUsesTbtDistance() {
-        val u = underpassNorth("c", 1.75)
-        val found = UpcomingUnderpassDetector.detect(pos, Tbt("TURN_ENTER_UNDER_C", 1800), listOf(u))
-        assertEquals(UpcomingUnderpass(u, 1800), found)
+    fun sumsTbtSegments() {
+        val u = underpassNorth("c", 2.05)
+        val found = guided(listOf(Tbt("TURN_LEFT", 300), Tbt("TURN_ENTER_UNDER_L", 1500)), u)
+        assertEquals(UpcomingUnderpass(u, 1800, onRoute = true), found)
     }
 
     @Test
-    fun detectorFallbackIgnoresUnderpassBehind() {
-        assertNull(UpcomingUnderpassDetector.detect(pos, null, listOf(underpassNorth("b", -0.5))))
+    fun picksUnderpassWhoseDistanceIsClosestToRouteDistance() {
+        val a = underpassNorth("a", 1.9)
+        val b = underpassNorth("b", 2.2)
+        assertEquals("a", guided(listOf(Tbt(enter, 1800)), b, a)!!.risk.id)
     }
 
     @Test
-    fun detectorFallbackFindsNearestAheadWithRoundedDistance() {
-        val near = underpassNorth("near", 1.0)
-        val far = underpassNorth("far", 1.5)
-        val found = UpcomingUnderpassDetector.detect(pos, null, listOf(far, near))!!
-        assertEquals("near", found.risk.id)
-        assertEquals(1000.0, found.distanceM.toDouble(), 5.0)
+    fun guidingIgnoresEntryBeyondTwoKm() {
+        val tbts = listOf(Tbt("TURN_LEFT", 500), Tbt(enter, 1600))
+        assertNull(guided(tbts, underpassNorth("x", 2.1)))
     }
 
     @Test
-    fun detectorFallbackIgnoresBeyondTwoKm() {
-        assertNull(UpcomingUnderpassDetector.detect(pos, null, listOf(underpassNorth("far", 2.5))))
+    fun guidingWithoutUnderpassEntryIsNull() {
+        assertNull(guided(listOf(Tbt("TURN_LEFT", 500)), underpassNorth("ahead", 1.0)))
     }
 
     @Test
-    fun detectorFallbackIgnoresOffAxis() {
-        val east = UnderpassRisk("e", "e", 37.50, 127.03 + 0.0114, Level.WARNING, null)
-        assertNull(UpcomingUnderpassDetector.detect(pos, null, listOf(east)))
+    fun guidingIgnoresUnderpassFarBeyondEntry() {
+        assertNull(guided(listOf(Tbt(enter, 800)), underpassNorth("x", 1.5)))
     }
 
     @Test
-    fun detectorTbtIgnoresUnderpassFarFromProjectedPoint() {
-        assertNull(UpcomingUnderpassDetector.detect(pos, Tbt("TURN_ENTER_UNDER_C", 1800), listOf(underpassNorth("x", 1.0))))
+    fun headingIgnoresUnderpassBehind() {
+        assertNull(heading(underpassNorth("b", -0.5)))
     }
 
     @Test
-    fun detectorNonUnderpassTbtFallsBack() {
-        val u = underpassNorth("u", 1.0)
-        val found = UpcomingUnderpassDetector.detect(pos, Tbt("TURN_LEFT", 100), listOf(u))!!
-        assertEquals(1000.0, found.distanceM.toDouble(), 5.0)
+    fun headingFindsNearestAheadWithRoundedDistance() {
+        val found = heading(underpassNorth("far", 1.5), underpassNorth("near", 1.0))!!
+        assertEquals(UpcomingUnderpass(underpassNorth("near", 1.0), 1001, onRoute = false), found)
+    }
+
+    @Test
+    fun headingIgnoresBeyondTwoKm() {
+        assertNull(heading(underpassNorth("far", 2.5)))
+    }
+
+    @Test
+    fun headingIgnoresOffAxis() {
+        assertNull(heading(UnderpassRisk("e", "e", 37.50, 127.03 + 0.0114, Level.WARNING, null)))
+    }
+
+    @Test
+    fun headingMatchIsNotOnRoute() {
+        assertFalse(heading(underpassNorth("n", 1.0))!!.onRoute)
     }
 }

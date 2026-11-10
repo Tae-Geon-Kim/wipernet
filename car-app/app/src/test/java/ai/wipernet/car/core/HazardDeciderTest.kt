@@ -2,6 +2,7 @@ package ai.wipernet.car.core
 
 import ai.wipernet.car.settings.Settings
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -15,10 +16,11 @@ class HazardDeciderTest {
         nowMs = s * 1000L
     }
 
-    private fun up(id: String, level: Level, withBypass: Boolean = true, distanceM: Int = 1000) =
+    private fun up(id: String, level: Level, withBypass: Boolean = true, distanceM: Int = 1000, onRoute: Boolean = true) =
         UpcomingUnderpass(
             UnderpassRisk(id, id, 37.509, 127.03, level, if (withBypass) bypass else null),
             distanceM,
+            onRoute,
         )
 
     private fun hazards(offline: Boolean = false, cells: List<RainCell> = emptyList()) =
@@ -141,8 +143,9 @@ class HazardDeciderTest {
     @Test
     fun parkingClearsMute() {
         decider.onCautionMuted()
-        decide(gear = "P")
         val u = up("a", Level.CAUTION)
+        assertEquals(emptyList<Action>(), decide(u))
+        decide(gear = "P")
         assertEquals(listOf(Action.InformUnderpass(u)), decide(u))
     }
 
@@ -200,7 +203,7 @@ class HazardDeciderTest {
         at(120)
         assertEquals(emptyList<Action>(), decide(hz = rain(null, 15.0)))
         at(601)
-        assertEquals(false, (decide(hz = rain(null, 15.0)).single() as Action.PrepareForRain).heavier)
+        assertFalse((decide(hz = rain(null, 15.0)).single() as Action.PrepareForRain).heavier)
     }
 
     @Test
@@ -210,5 +213,89 @@ class HazardDeciderTest {
         assertEquals(emptyList<Action>(), decide(hz = rain(null, 15.0)))
         at(600)
         assertEquals(1, decide(hz = rain(null, 15.0)).size)
+    }
+
+    @Test
+    fun headingOnlyNeedsTwoCalls() {
+        val a = up("a", Level.WARNING, onRoute = false)
+        assertEquals(emptyList<Action>(), decide(a))
+        at(1)
+        assertEquals(warnAndOffer(a), decide(a))
+    }
+
+    @Test
+    fun headingOnlyDifferentIdResetsConfirmation() {
+        val a = up("a", Level.WARNING, onRoute = false)
+        val b = up("b", Level.WARNING, onRoute = false)
+        decide(a)
+        at(1)
+        assertEquals(emptyList<Action>(), decide(b))
+        at(2)
+        assertEquals(emptyList<Action>(), decide(a))
+        at(3)
+        assertEquals(warnAndOffer(a), decide(a))
+    }
+
+    @Test
+    fun onRouteAnnouncesImmediately() {
+        val u = up("a", Level.WARNING, onRoute = true)
+        assertEquals(warnAndOffer(u), decide(u))
+    }
+
+    @Test
+    fun acceptedRerouteSilentUntilNewApproach() {
+        decide(up("a", Level.WARNING))
+        decider.onRerouteAccepted("a")
+        at(10)
+        assertEquals(emptyList<Action>(), decide(up("a", Level.DANGER)))
+        at(71)
+        decide(null)
+        at(72)
+        val d = up("a", Level.DANGER)
+        assertEquals(warnAndOffer(d), decide(d))
+    }
+
+    @Test
+    fun parkingClearsDecline() {
+        val w = up("a", Level.WARNING)
+        decide(w)
+        decider.onRerouteDeclined("a", Level.WARNING)
+        at(400)
+        assertEquals(emptyList<Action>(), decide(w))
+        decide(gear = "P")
+        at(401)
+        assertEquals(warnAndOffer(w), decide(w))
+    }
+
+    @Test
+    fun dangerThenWarningRemindsAfterCooldown() {
+        decide(up("a", Level.DANGER))
+        at(100)
+        assertEquals(emptyList<Action>(), decide(up("a", Level.WARNING)))
+        at(300)
+        val w = up("a", Level.WARNING)
+        assertEquals(warnAndOffer(w), decide(w))
+    }
+
+    private fun rainAt(lat: Double, lng: Double = 127.03) = hazards(cells = listOf(RainCell(lat, lng, 15.0)))
+
+    @Test
+    fun noPrepForCellBehind() {
+        assertEquals(emptyList<Action>(), decide(hz = rainAt(37.482)))
+    }
+
+    @Test
+    fun noPrepForCellOffAxis() {
+        assertEquals(emptyList<Action>(), decide(hz = rainAt(37.50, 127.0527)))
+    }
+
+    @Test
+    fun noPrepForCellNearerThanSixtySeconds() {
+        assertEquals(emptyList<Action>(), decide(hz = rainAt(37.5063)))
+    }
+
+    @Test
+    fun noPrepForCellFartherThanThreeMinutes() {
+        assertEquals(emptyList<Action>(), decide(hz = rainAt(37.545)))
     }
 }

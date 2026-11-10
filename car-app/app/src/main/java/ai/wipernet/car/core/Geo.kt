@@ -35,13 +35,3 @@ internal fun bearingDeg(lat1: Double, lng1: Double, lat2: Double, lng2: Double):
 
 internal fun angularOffsetDeg(bearing: Double, heading: Double): Double =
     abs(((bearing - heading + 180) % 360 + 360) % 360 - 180)
-
-internal fun destination(lat: Double, lng: Double, headingDeg: Double, meters: Double): LatLng {
-    val p1 = Math.toRadians(lat)
-    val l1 = Math.toRadians(lng)
-    val br = Math.toRadians(headingDeg)
-    val ang = meters / EARTH_M
-    val p2 = asin(sin(p1) * cos(ang) + cos(p1) * sin(ang) * cos(br))
-    val l2 = l1 + atan2(sin(br) * sin(ang) * cos(p1), cos(ang) - sin(p1) * sin(p2))
-    return LatLng(Math.toDegrees(p2), Math.toDegrees(l2))
-}

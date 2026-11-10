@@ -27,7 +27,7 @@ data class Hazards(
     val serverClock: String? = null,
 )
 
-data class UpcomingUnderpass(val risk: UnderpassRisk, val distanceM: Int)
+data class UpcomingUnderpass(val risk: UnderpassRisk, val distanceM: Int, val onRoute: Boolean)
 
 sealed interface Action {
     data class WarnUnderpass(val u: UpcomingUnderpass) : Action

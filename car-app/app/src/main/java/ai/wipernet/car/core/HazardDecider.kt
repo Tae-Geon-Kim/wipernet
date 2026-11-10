@@ -8,30 +8,42 @@ class HazardDecider(private val clock: () -> Long) {
         var announcedAt: Long = 0,
         var lastSeenAt: Long = 0,
         var declined: Level? = null,
+        var accepted: Boolean = false,
     )
 
     private val underpasses = mutableMapOf<String, UnderpassState>()
     private var wasOffline = false
     private var cautionMuted = false
+    private var previousUpcomingId: String? = null
     private var prepTier: Double? = null
     private var prepAt = 0L
 
     fun decide(pos: Position, gear: String, upcoming: UpcomingUnderpass?, hazards: Hazards, settings: Settings): List<Action> {
         if (gear == "P") {
             cautionMuted = false
+            underpasses.values.forEach { it.declined = null }
             return emptyList()
         }
         val now = clock()
         val actions = mutableListOf<Action>()
         if (hazards.offline && !wasOffline) actions += Action.ShowOffline
         wasOffline = hazards.offline
-        if (upcoming != null && upcoming.distanceM <= UNDERPASS_RANGE_M) actions += underpassActions(upcoming, now)
+        val inRange = upcoming?.takeIf { it.distanceM <= UNDERPASS_RANGE_M }
+        // A heading-only match must repeat once, so a brief catch while turning stays quiet.
+        if (inRange != null && (inRange.onRoute || inRange.risk.id == previousUpcomingId)) {
+            actions += underpassActions(inRange, now)
+        }
+        previousUpcomingId = inRange?.risk?.id
         prepareForRain(pos, hazards.rainCells, settings, now)?.let { actions += it }
         return actions
     }
 
     fun onRerouteDeclined(id: String, level: Level) {
         underpasses.getOrPut(id) { UnderpassState() }.declined = level
+    }
+
+    fun onRerouteAccepted(id: String) {
+        underpasses.getOrPut(id) { UnderpassState() }.accepted = true
     }
 
     fun onCautionMuted() {
@@ -41,12 +53,14 @@ class HazardDecider(private val clock: () -> Long) {
     private fun underpassActions(upcoming: UpcomingUnderpass, now: Long): List<Action> {
         val risk = upcoming.risk
         val s = underpasses.getOrPut(risk.id) { UnderpassState() }
-        val newApproach = s.announced == null || now - s.lastSeenAt > APPROACH_GAP_MS
+        val newApproach = now - s.lastSeenAt > APPROACH_GAP_MS
+        if (newApproach) s.accepted = false
         s.lastSeenAt = now
+        if (s.accepted) return emptyList()
         val rise = s.announced.let { it == null || risk.level > it }
         val announce = when {
             risk.level >= Level.WARNING ->
-                !(s.declined?.let { risk.level <= it } ?: false) && (rise || now - s.announcedAt >= WARNING_REPEAT_MS)
+                s.declined.let { it == null || risk.level > it } && (rise || now - s.announcedAt >= WARNING_REPEAT_MS)
             risk.level == Level.CAUTION -> !cautionMuted && (rise || newApproach)
             else -> false
         }
