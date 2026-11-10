@@ -5,6 +5,7 @@ __pycache__/
 *.egg-info/
 build/
 .gradle/
+.kotlin/
 local.properties
 backend/data/raw/
 backend/.env
