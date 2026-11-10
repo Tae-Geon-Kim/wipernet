@@ -2,15 +2,45 @@
 
 계획 Task 0에서 사용자가 준비한 것과, 에이전트가 직접 호출해 확인한 결과를 적는다. 키 값은 적지 않는다(`backend/.env`, 커밋 안 함).
 
-- 마지막 확인: 2026-11-05
+- 마지막 확인: 2026-11-10
 
 ## 1. Pleos SDK·에뮬레이터
 
 | 항목 | 상태 |
 |---|---|
-| Pleos Playground 개발자 등록, SDK 신청 상태 | 미확인 (Task 11 전까지) |
-| Pleos Connect Emulator v2.1.0+ 설치, Virtual Console 접속 | 미확인 (Task 11 전까지) |
-| 공모전 문의 게시판 질문 3개 (설계 6.6) | 미확인 |
+| Pleos Playground 개발자 등록, 프로젝트 | 완료. 프로젝트 `WiperNet`, 분류 "모빌리티 서비스". 클라이언트 ID·시크릿은 여기 적지 않는다 |
+| Pleos Connect Emulator v2.1.0 설치, Virtual Console 접속 | 완료. `adb forward tcp:8088 tcp:8088` 뒤 http://127.0.0.1:8088/ 응답 200 |
+| 공모전 문의 | 공모전 사이트에 게시판이 없다. 문의는 이메일 `appdevchallenge@hyundai-partners.com`. Vehicle Control 공개 시기와 대체 시연 허용 여부를 문의한다(2026-11-10) |
+
+### SDK 상태와 에뮬레이터 확인 결과 (2026-11-10)
+
+Playground 상태는 프로젝트 SDK 메뉴에서 본 값이다. 신청 버튼이 있는 SDK는 없었다. 공모전 사이트(공지 3건, FAQ)와 Pleos 개발자 사이트에 공개 시기 공지는 없다. FAQ는 "각 SDK의 현재 제공 상태와 사용 조건은 SDK 문서 페이지에서 확인"이라고만 한다.
+
+에뮬레이터 결과는 저장소 밖 임시 앱으로 SDK를 직접 불러 본 것이다. 앱 manifest에 `pleos.car.permission.CAR_WINDOWS`, `CAR_DRIVE`, `CAR_LIGHTS`, `CAR_CLIMATE`, `CONTROL_CAR_WINDOWS`, `CONTROL_CAR_LIGHTS`, `CONTROL_CAR_CLIMATE`, `TTS_SERVICE`, `STT_SERVICE`, `android.permission.RECORD_AUDIO`를 넣고 `adb install -g`로 모두 허용했다.
+
+| SDK (좌표) | Playground | 에뮬레이터 결과 |
+|---|---|---|
+| Vehicle State (`ai.pleos.playground:Vehicle:2.3.2`) | 11개 항목 모두 사용 가능. 와이퍼 모드는 "창문 상태 조회"에 들어 있다 | 와이퍼: 스위치 capability `READ_WRITE`, 앞·뒤 유리 모두 값 목록 `OFF, CONTINUOUS_LEVEL_1, CONTINUOUS_LEVEL_3, AUTO`. 상태 capability `READ`, 값 목록 `OFF, ON, SERVICE`. 현재 값 읽기와 상태 리스너가 동작한다. 기어: `GEAR_PARK`를 읽었고 리스너가 동작한다 |
+| Vehicle Control (같은 SDK의 set API) | 8개 항목 모두 준비 중 | **Virtual Console이 브라우저에 열려 있을 때만 반영된다.** 열려 있으면 운전석 창문(7→3→0)·하향등 스위치(ON↔OFF)·앞유리 디프로스터(켜기·끄기)가 앱에서 다시 읽은 값, 앱의 변경 리스너, Virtual Console 상태(`/vehicle/state`) 모두에 1초 안에 반영된다. 닫혀 있으면 성공 콜백은 오지만 값이 그대로다(처음 확인에서 "반영 안 됨"으로 적은 것은 이 경우였다). 범위를 넘는 값은 `onFailed`로 온다. 공조 전원(`setHvacPower`)은 운전석 영역(`ROW_1_LEFT`)을 지원하지 않는다고 실패하고, 디프로스터는 공조 전원 없이도 동작한다 |
+| NaviHelper (`ai.pleos.playground:NaviHelper:3.0.5`) | 사용 가능 | 아직 안 불러 봤다 |
+| TextToSpeech (`ai.pleos.playground:TextToSpeech:3.3.1`) | 준비 중 | **`ON_DEVICE` 모드가 동작한다.** 한국어 문장을 `onStart` → `onDone`까지 재생했고 이어폰으로 들린다. 화자는 `seoyoon`. `initialize()` 성공 뒤에 `addEventListener()`를 불러야 한다(먼저 부르면 `UninitializedPropertyAccessException`으로 앱이 죽는다) |
+| SpeechToText (`ai.pleos.playground:SpeechToText:3.3.1`) | 준비 중 | `ON_DEVICE` 초기화, `onReady`, 기기 마이크 녹음 시작(16 kHz)까지 확인했다. 실제 말소리 인식은 아직 확인하지 못했다. 확인하려면 Extended Controls → Microphone → "Enable Host Microphone Access"를 켠다. 리스너는 TTS와 같이 `initialize()` 성공 뒤에 등록했다 |
+| FusedLocation (`ai.pleos.playground:FusedLocation:1.1.3`) | 준비 중 | **동작한다.** 권한은 `pleos.car.permission.FUSED_LOCATION`(dangerous). `isSupported()`가 true, `getLastKnownLocation()`과 `registerFusedLocationCallback()`이 약 1초마다 위치를 준다. `adb emu geo fix 127.0300 37.5000`으로 바꾼 위치가 바로 들어온다. 처음 값은 에뮬레이터 기본 위치(37.422, -122.084)다. 위치만 바꾸면 `heading`은 0으로 온다 |
+
+**사용 결정 (사용자, 2026-11-10):** 에뮬레이터에서 동작하는 Vehicle 읽기, NaviHelper, FusedLocation, TTS, STT는 Playground 표시와 관계없이 쓴다. Vehicle Control(set API)도 쓴다. set 성공 콜백만으로는 반영을 알 수 없으므로 다시 읽거나 변경 이벤트로 확인하고, 반영되지 않은 항목은 음성으로 권한다.
+
+SDK 저장소는 `https://nexus-playground.pleos.ai/repository/maven-releases/`이고 인증이 필요 없다.
+
+### 에뮬레이터 설치와 실행에서 알게 된 것
+
+- 시스템 이미지는 Android Studio SDK Manager → SDK Update Sites에 `https://nexus-playground.pleos.ai/repository/raw-releases/connect-avd/2.x/crp-arm64-sys-img.xml`을 추가해 받는다. 이름은 "Pleos Connect v2.1.0 APIs arm64 System Image"(API 34)이고, 받는 크기 4.3 GB, 풀면 약 19 GB다.
+- AVD는 문서대로 Automotive → Pleos Connect v2.1.0, Cold boot, RAM 4 GB. 처음 켤 때 데이터 영역(기본 10 GB) + 2 GB의 빈 디스크가 필요하다. 디스크가 부족하면 "Not enough space to create userdata partition"으로 바로 꺼진다. 이 맥은 `~/.android/avd/Pleos_Connect_v2.1.0.avd/config.ini`의 `disk.dataPartition.size`를 6G로 줄였다.
+- M1 맥에서 GPU 기본값(`auto`, Vulkan lavapipe)으로 켜면 "detected a hanging thread 'QEMU2 main loop'" 뒤 꺼졌다. `emulator -avd Pleos_Connect_v2.1.0 -no-snapshot-load -gpu host -feature -Vulkan`으로 켜면 부팅한다.
+- **Virtual Console은 브라우저 화면이 열려 있어야 차량 상태를 갱신한다.** 1초마다 `POST /browser/session?client=…`을 보내고, 3초 동안 오지 않으면 `emulator_inactive`가 된다. 그동안 앱의 set은 성공 콜백만 오고 반영되지 않는다. 영상 녹화와 확인 때는 Virtual Console 탭을 열어 둔다.
+- 창문 위치는 앱에서 0~10, Virtual Console에서 0~100%다(앱 3 = 30%). 처음 값은 0이다.
+- Pleos 홈 화면은 부팅 직후 내비 앱을 앞으로 띄운다. 그때 `adb shell am start -n ai.wipernet.car/.MainActivity`는 "task has been brought to the front"만 내고 앱이 보이지 않을 수 있다. `am start --user current -f 0x10008000 -n …`(새 task)로 띄우면 된다.
+- 앱 글씨는 이 에뮬레이터(2560×1440)에서 생각보다 작게 보인다. Material 기본 크기(대화상자 등)는 작아서 글자 크기를 직접 키웠다.
+- Android Studio 2026.2.2의 내장 JDK는 25다. Gradle 9.9.0 + AGP 9.5.1(compileSdk 37)로 빌드했다.
 
 ## 2. 외부 자료
 
