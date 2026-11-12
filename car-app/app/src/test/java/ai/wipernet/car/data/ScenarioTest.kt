@@ -45,6 +45,15 @@ class ScenarioTest {
         assertEquals(listOf(Tbt("TURN_ENTER_UNDER_C", 1998)), signals.tbts.first())
     }
 
+    @Test fun parksAfterTheLastFrame() = runTest {
+        val signals = ReplayVehicleSignals(scenario, backgroundScope, speed = 1.0)
+        advanceTimeBy(215_001)
+        assertEquals(215, signals.t.value)
+        assertEquals("D", signals.gear.first())
+        advanceTimeBy(5_000)
+        assertEquals("P", signals.gear.first())
+    }
+
     @Test fun replaySpeedShortensWaits() = runTest {
         val signals = ReplayVehicleSignals(scenario, backgroundScope, speed = 5.0)
         advanceTimeBy(1_001)

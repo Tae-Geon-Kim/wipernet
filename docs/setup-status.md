@@ -56,6 +56,17 @@ SDK 저장소는 `https://nexus-playground.pleos.ai/repository/maven-releases/`�
 - **내비 현재 위치가 성남에 고정되는 까닭을 찾아봤지만 바꿀 방법은 찾지 못했다.** `adb emu geo fix`는 Android GPS와 FusedLocation을 바꾸지만(`dumpsys location`), 내비 앱이 Android GPS에 건 요청은 PASSIVE와 30분 간격 HIGH_ACCURACY 하나뿐이고 받은 위치는 1개였다. 내비 엔진 맵매칭 로그는 계속 (37.4127, 127.0947), `sat(0)`이다. geo fix에 위성 수(10)를 붙여도 Android 위치의 `satellites`는 0이고 내비도 그대로였다. Virtual Console `/vehicle/catalog`에는 위치 항목이 없다. 내비 엔진에 경로 모의 주행 코드(`api_route_simul`)가 있지만 NaviHelper SDK(경로 요청에 출발점 없음), 내비 앱이 받는 인텐트 어디에도 켜는 길이 없고, 내비는 시스템 앱이며 에뮬레이터가 production 빌드라 `adb root`가 안 된다. 실제 차에서는 차량 GNSS·센서 쪽 경로로 위치가 들어가고 에뮬레이터는 그것을 흉내 내지 않는 것으로 추정한다(확인 안 됨). 공모전 사무국에 문의한다.
 - **공식 문서:** document.pleos.ai의 NaviHelper API 페이지는 자바스크립트로 그려져 `curl`로는 본문이 보이지 않았다. 위 동작은 문서가 아니라 에뮬레이터에서 본 것이다.
 
+### 서비스·알림·데모·라이브 업로드 (2026-11-12, Task 15)
+
+- **알림 권한은 사용자 10에 줘야 한다.** Pleos 에뮬레이터 앱은 사용자 10으로 돈다. `adb shell pm grant ai.wipernet.car android.permission.POST_NOTIFICATIONS`는 사용자 0에만 줘서, 앱 알림이 모두 막혔다(`dumpsys notification`에 `importance=NONE`, `numBlocked`). `pm grant --user 10 …`으로 풀었다. 실제 사용에서는 첫 실행 때 권한 창이 뜬다.
+- **Pleos는 앱 알림을 화면에 팝업으로 띄우지 않는다.** 높은 중요도 채널이어도 알림 창(`cmd statusbar expand-notifications`)에만 들어간다. 알림 창의 "예" 버튼은 앱의 수신기로 답을 보낸다. 창이 펼쳐지는 중에 누르면 눌리지 않았다.
+- **데모 순서:** 앱 시작 뒤 33초 "곧 비 구간", 143초 "곧 더 강한 비 구간", 213초 개포 2.0 km 경고와 우회 질문. 홈으로 나가 내비를 띄워 둬도 계속 나왔고, 앱 화면은 앞으로 뜨지 않았다.
+- **오프라인 안내는 기어 P에서는 나오지 않는다**(A3: 기어 P면 아무것도 안 함). Virtual Console `PUT /vehicle/gear?gear=Drive`로 D에 둔 뒤 서버를 끈 채 라이브로 켜자 안내가 나왔다. 기어 D에서도 앱 화면이 가려지지 않았다(`distractionOptimized`).
+- **라이브 업로드:** 서버 시계가 없을 때는 보내지 않았다. 차가 안 움직이는 에뮬레이터에서는 앱을 켠 위치가 길안내 출발지라 300 m 규칙에 걸려, `adb emu geo fix 127.0500 37.4800`으로 옮긴 뒤 보냈다. 와이퍼 Low·High·Off가 서버 시각(2022-08-08 20:00)으로 들어왔고, 꺼진 뒤 길안내 중이라 약 5분 뒤 "꺼짐"을 다시 보냈다.
+- **데모를 앱 화면에 둔 채 끝까지:** 213초 위쪽 경고 띠, 우회 질문 무응답이면 420초에 위험 단계로 다시 경고, 565초 도착 뒤 주차(기어 P)되어 "비 지도" 버튼이 나오고 열렸다(약 9.5분).
+- **재부팅 자동 시작:** `adb reboot` 뒤 부팅 완료 약 25초 만에 서비스가 저절로 시작됐다. 백그라운드에서 시작돼 microphone 타입이 막히고 specialUse 타입으로 돈다.
+- **AUTO 와이퍼:** Task 13에서 Virtual Console을 Auto로 바꿨을 때 상태가 `ON`으로 7초 넘게 그대로였다. 와이퍼 한 번마다 ON/OFF가 바뀌지 않는다면 앱은 15초 뒤 40회(연속)로 보낸다. 더 길게는 보지 않았다.
+
 ### 에뮬레이터 설치와 실행에서 알게 된 것
 
 - 시스템 이미지는 Android Studio SDK Manager → SDK Update Sites에 `https://nexus-playground.pleos.ai/repository/raw-releases/connect-avd/2.x/crp-arm64-sys-img.xml`을 추가해 받는다. 이름은 "Pleos Connect v2.1.0 APIs arm64 System Image"(API 34)이고, 받는 크기 4.3 GB, 풀면 약 19 GB다.

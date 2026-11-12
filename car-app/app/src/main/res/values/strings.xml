@@ -39,4 +39,22 @@
     <string name="mode_demo">데모</string>
     <string name="mode_live">라이브</string>
     <string name="settings_server_url">서버 주소</string>
+
+    <string name="notif_channel_service">와이퍼넷 동작 중</string>
+    <string name="notif_channel_alerts">빗길·지하차도 경고</string>
+    <string name="notif_running">와이퍼넷이 빗길을 지켜보고 있어요</string>
+    <string name="notif_reroute_title">우회 경로로 안내할까요?</string>
+    <string name="notif_yes">예</string>
+    <string name="notif_no">아니오</string>
+    <string name="notif_offline">네트워크 연결이 끊겨 빗길 정보를 받을 수 없어요</string>
+    <string name="level_caution">주의</string>
+    <string name="level_warning">경고</string>
+    <string name="level_danger">위험</string>
+    <string name="drive_offline">연결 끊김</string>
+    <string name="drive_connected">연결됨</string>
+    <string name="drive_ahead">%1$s · %2$skm 앞</string>
+    <string name="drive_rain_map">비 지도</string>
+    <string name="drive_restart_demo">데모 처음부터</string>
+    <string name="rain_map_title">내 주변 3 km 비 지도</string>
+    <string name="rain_map_legend">10 mm/h 미만 · 10~30 · 30~50 · 50 이상</string>
 </resources>
