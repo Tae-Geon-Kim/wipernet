@@ -2,7 +2,7 @@
 
 계획 Task 0에서 사용자가 준비한 것과, 에이전트가 직접 호출해 확인한 결과를 적는다. 키 값은 적지 않는다(`backend/.env`, 커밋 안 함).
 
-- 마지막 확인: 2026-11-10
+- 마지막 확인: 2026-11-12
 
 ## 1. Pleos SDK·에뮬레이터
 
@@ -30,6 +30,18 @@ Playground 상태는 프로젝트 SDK 메뉴에서 본 값이다. 신청 버튼�
 **사용 결정 (사용자, 2026-11-10):** 에뮬레이터에서 동작하는 Vehicle 읽기, NaviHelper, FusedLocation, TTS, STT는 Playground 표시와 관계없이 쓴다. Vehicle Control(set API)도 쓴다. set 성공 콜백만으로는 반영을 알 수 없으므로 다시 읽거나 변경 이벤트로 확인하고, 반영되지 않은 항목은 음성으로 권한다.
 
 SDK 저장소는 `https://nexus-playground.pleos.ai/repository/maven-releases/`이고 인증이 필요 없다.
+
+### 앱 코드로 확인한 차량 신호와 업로드 (2026-11-12, Task 13)
+
+디버그 빌드에만 있는 확인 화면 `SignalCheckActivity`로 앱의 `PleosVehicleSignals`, `UploadQueue`, `LiveHazardClient`를 그대로 돌렸다. 띄우는 명령과 설정 값은 그 파일 머리 주석에 있다.
+
+- **서버 주소:** 이 맥은 다른 Docker 컨테이너가 8000번을 쓰고 있어 서버를 `--host 0.0.0.0 --port 8001`로 띄우고 앱 서버 주소를 `http://10.0.2.2:8001`로 바꿨다. 서버 시계가 비어 있으면 앱이 이벤트를 보내지 않으므로, 먼저 `curl`로 이벤트 하나를 넣어 시계를 세웠다.
+- **앱 manifest:** 서버가 `http`라 `INTERNET` 권한과 `usesCleartextTraffic="true"`를 넣었다.
+- **Virtual Console을 브라우저 없이 조작할 수 있다.** 화면이 쓰는 HTTP를 그대로 부른다. `POST /browser/session?client=<아무 이름>`을 1초마다 보내면 브라우저가 열린 것으로 친다. 그 상태에서 `PUT /vehicle/body?front_wiper=Low`(값 `Off, Auto, Low, High`)로 앞 와이퍼를 바꾼다. 하트비트를 시작하자마자 바꾸면 반영되지 않았고, 몇 초 뒤에는 반영됐다.
+- **와이퍼 값:** Low → `CONTINUOUS_LEVEL_1/ON`, High → `CONTINUOUS_LEVEL_3/ON`, Auto → `AUTO/ON`, Off → `OFF/OFF`. 바꿀 때마다 로컬 서버 `/v1/debug/vehicles`에 몇 초 안에 그 값이 왔다. 상태 리스너가 스위치보다 약 50 ms 먼저 와서, 상태만 고치면 `OFF/ON`, `AUTO/OFF` 같은 잠깐의 조합이 생겼다. 그래서 앱은 상태 리스너가 오면 스위치·상태를 함께 다시 읽는다.
+- **Vehicle SDK:** 연결 완료 콜백(`initialize()`는 반환값·콜백 없음)과 와이퍼 스위치 리스너(`registerWiperState`만 있음)가 없다. 앱은 와이퍼·기어·창문을 1초마다 읽는다. 기어 `GEAR_PARK`, 창문 4곳 0(닫힘)을 읽었다.
+- **오프라인과 큐:** 서버를 끄면 약 10초 뒤 오프라인이 됐다. 꺼진 동안 바꾼 와이퍼 값은 큐에 1건 남았고, 서버를 다시 켠 뒤 다음 변경 때 함께 보내져 큐가 비었다.
+- **NaviHelper는 이번에 확인하지 못했다.** 콜드 부팅 뒤 내비 앱이 "내비게이션 실행이 지연되고 있습니다"에서 멈췄다. 다시 시도와 강제 종료 뒤 재실행도 같았다. 로그에는 `navi not ready`가 남고, 상태는 `appStatus=AuthComplete, engineStatus=NaviEngineComplete, mapStatus=MapInitComplete`였다. 그래서 앱의 TBT·길안내 중 신호와 개포를 지나는 경로의 실제 지하차도 TBT 값은 확인하지 못했다. 같은 호출은 2026-11-11 시험 앱에서 동작했다(위 NaviHelper 줄).
 
 ### 에뮬레이터 설치와 실행에서 알게 된 것
 
