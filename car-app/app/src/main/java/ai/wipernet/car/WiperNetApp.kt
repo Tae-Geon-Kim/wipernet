@@ -2,6 +2,7 @@ package ai.wipernet.car
 
 import ai.wipernet.car.data.FileQueueStore
 import ai.wipernet.car.data.UploadQueue
+import ai.wipernet.car.service.WiperNetService
 import ai.wipernet.car.settings.DataStoreSettingsStore
 import ai.wipernet.car.settings.SettingsStore
 import android.app.Application
@@ -19,6 +20,7 @@ class WiperNetApp : Application() {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     lateinit var settingsStore: Deferred<SettingsStore>
         private set
+    val controller by lazy { AppController(this) }
     val uploadQueue by lazy { UploadQueue(FileQueueStore(filesDir.resolve("upload_queue.jsonl"))) }
 
     override fun onCreate() {
@@ -26,7 +28,8 @@ class WiperNetApp : Application() {
         val dataStore = PreferenceDataStoreFactory.create { preferencesDataStoreFile("settings") }
         settingsStore = scope.async {
             DataStoreSettingsStore.open(dataStore) {
-                Log.i("WiperNet", "consent revoked, clearing upload queue")
+                Log.i("WiperNet", "consent revoked, stopping service and clearing upload queue")
+                WiperNetService.stop(this@WiperNetApp)
                 scope.launch { uploadQueue.clear() }
             }
         }
