@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -23,6 +24,8 @@ dependencies {
     implementation(libs.activity.compose)
     implementation(libs.core.splashscreen)
     implementation(libs.datastore.preferences)
+    implementation(libs.serialization.json)
+    implementation(libs.okhttp)
 
     implementation(libs.pleos.vehicle)
     implementation(libs.pleos.navihelper)
@@ -32,4 +35,5 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.coroutines.test)
+    testImplementation(libs.okhttp.mockwebserver)
 }
