@@ -14,6 +14,10 @@ android {
         versionCode = 1
         versionName = "0.1"
     }
+    buildTypes {
+        // 공모전 제출용 release APK를 바로 설치할 수 있게 디버그 키로 서명한다(App Market 배포 때는 배포 키로 바꾼다).
+        release { signingConfig = signingConfigs.getByName("debug") }
+    }
     buildFeatures { compose = true }
     // 시뮬레이터와 같은 업로드 규칙 사례(C5)를 테스트에서 읽는다.
     sourceSets["test"].resources.srcDir("../../shared")
