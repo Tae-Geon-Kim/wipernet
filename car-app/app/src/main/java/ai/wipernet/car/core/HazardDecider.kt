@@ -2,7 +2,14 @@ package ai.wipernet.car.core
 
 import ai.wipernet.car.settings.Settings
 
-class HazardDecider(private val clock: () -> Long) {
+/** 운전자 응답을 판단 로직에 알린다. A11 동작 실행기가 부른다. */
+interface DriverResponses {
+    fun onRerouteDeclined(id: String, level: Level)
+    fun onRerouteAccepted(id: String)
+    fun onCautionMuted()
+}
+
+class HazardDecider(private val clock: () -> Long) : DriverResponses {
     private class UnderpassState(
         var announced: Level? = null,
         var announcedAt: Long = 0,
@@ -38,15 +45,15 @@ class HazardDecider(private val clock: () -> Long) {
         return actions
     }
 
-    fun onRerouteDeclined(id: String, level: Level) {
+    override fun onRerouteDeclined(id: String, level: Level) {
         underpasses.getOrPut(id) { UnderpassState() }.declined = level
     }
 
-    fun onRerouteAccepted(id: String) {
+    override fun onRerouteAccepted(id: String) {
         underpasses.getOrPut(id) { UnderpassState() }.accepted = true
     }
 
-    fun onCautionMuted() {
+    override fun onCautionMuted() {
         cautionMuted = true
     }
 
