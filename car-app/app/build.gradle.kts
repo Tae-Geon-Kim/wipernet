@@ -15,6 +15,8 @@ android {
         versionName = "0.1"
     }
     buildFeatures { compose = true }
+    // 시뮬레이터와 같은 업로드 규칙 사례(C5)를 테스트에서 읽는다.
+    sourceSets["test"].resources.srcDir("../../shared")
 }
 
 dependencies {
