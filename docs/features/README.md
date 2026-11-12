@@ -3,7 +3,7 @@
 > 에이전트는 **구현 전에** 이 문서를 읽고, **구현 후에** 같은 PR에서 고친다 ([CLAUDE.md](../../CLAUDE.md) 5장).
 > 이 문서는 지금 상태만 적는다. 바뀐 내역은 git과 PR에 남는다.
 
-- 마지막 갱신: 2026-11-11, 브랜치 `feat/task-12-hazard-decider` (Task 12)
+- 마지막 갱신: 2026-11-12, 브랜치 `feat/task-13-data-sources` (Task 13)
 - 근거: [설계](../2026-10-30-wipernet-design.md), [구현 계획](../superpowers/plans/2026-10-30-wipernet.md)
 
 ## 상태 표기
@@ -47,12 +47,12 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 | | V7 | 공식 알림 (기상특보, 재난문자) | 🧪 | 4a |
 | | V8 | 레이더 | 🧪 | 4b |
 | | V9 | 와이퍼와 외부 자료 합치기 | 🧪 | 4c |
-| 차량 앱 | A1 | 동의·설정 | 시작 화면("WiperNet", 1.2초 + 설정을 읽을 때까지) → 첫 실행 동의 화면("동의" 버튼으로만) → 홈("지켜보고 있어요", 데모 모드일 때만 "데모 모드" 표시, ⚙ 설정). 설정은 차량 준비 항목별 켜기/끄기, 동의 철회(확인 창, 철회하면 동의 화면으로), "시연·개발용" 칸에 데모/라이브 모드(서버 주소는 라이브일 때만). DataStore에 저장하고 기본은 데모·동의 안 함·`http://10.0.2.2:8000`·준비 3개 켬. 철회(동의 true→false)마다 `onConsentRevoked` 한 번(지금은 로그만, 전송 중지·큐 삭제는 Task 13) | `settings/Settings.kt`, `ui/ConsentScreen.kt`, `ui/HomeScreen.kt`, `ui/SettingsScreen.kt`, `ui/Theme.kt`, `MainActivity.kt`, `WiperNetApp.kt` | `SettingsTest` | 2026-11-10 확인. 새로 설치 → 시작 화면 → 동의 → 홈(데모 표시) → 설정 → 라이브(서버 주소 보임, 홈 표시 사라짐) → 철회 확인 → 동의 화면, 다시 실행하면 설정 유지, 철회 로그 한 번 |
+| 차량 앱 | A1 | 동의·설정 | 시작 화면("WiperNet", 1.2초 + 설정을 읽을 때까지) → 첫 실행 동의 화면("동의" 버튼으로만) → 홈("지켜보고 있어요", 데모 모드일 때만 "데모 모드" 표시, ⚙ 설정). 설정은 차량 준비 항목별 켜기/끄기, 동의 철회(확인 창, 철회하면 동의 화면으로), "시연·개발용" 칸에 데모/라이브 모드(서버 주소는 라이브일 때만). DataStore에 저장하고 기본은 데모·동의 안 함·`http://10.0.2.2:8000`·준비 3개 켬. 철회(동의 true→false)마다 `onConsentRevoked` 한 번 → A5 업로드 큐를 비운다(전송 중지는 A12, Task 15) | `settings/Settings.kt`, `ui/ConsentScreen.kt`, `ui/HomeScreen.kt`, `ui/SettingsScreen.kt`, `ui/Theme.kt`, `MainActivity.kt`, `WiperNetApp.kt` | `SettingsTest` | 2026-11-10 확인. 새로 설치 → 시작 화면 → 동의 → 홈(데모 표시) → 설정 → 라이브(서버 주소 보임, 홈 표시 사라짐) → 철회 확인 → 동의 화면, 다시 실행하면 설정 유지, 철회 로그 한 번 |
 | | A2 | 앞쪽 지하차도 찾기 | 🧪 | 12 |
 | | A3 | 위험 판단 (경고·우회·준비·쿨다운·"그만") | 🧪 | 12 |
-| | A4 | 차량 신호 (Pleos / 재생) | 📐 | 13 |
-| | A5 | 업로드 큐와 임시 ID | 📐 | 13 |
-| | A6 | 위험 정보 클라이언트 (라이브 / 재생) | 📐 | 13 |
+| | A4 | 차량 신호 (Pleos / 재생) | ✅ 와이퍼·기어·창문·위치, NaviHelper(TBT·길안내 중)는 이번에 확인 못 함 / 재생 🧪 | 13 |
+| | A5 | 업로드 큐와 임시 ID | ✅ | 13 |
+| | A6 | 위험 정보 클라이언트 (라이브 / 재생) | ✅ 라이브 / 재생 🧪 | 13 |
 | | A7 | 음성 안내 | 📐 | 14 |
 | | A8 | 차량 준비 (창문·김서림·전조등) | 📐 | 14 |
 | | A9 | 우회 경로 | 📐 | 14 |
@@ -70,7 +70,7 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 | | C5 | 업로드 규칙 판정 사례 `shared/upload_policy_cases.json` | 19개 사례, S5 테스트 통과 (A16은 Task 15) | 7, 15 |
 | | C6 | 2022-08-08 자료 기록 (특보·재난문자·레이더·AWS) | 특보·재난문자·레이더·AWS 정리 | 4a, 4b, 5 |
 | 제출물 | D1 | README | 초안 (🚧 표시 남음) | 16 |
-| | D2 | SDK·에뮬레이터·외부 자료 확인 기록 `docs/setup-status.md` | 외부 자료 확인. Pleos SDK 상태와 에뮬레이터 1차 확인(2026-11-10, 임시 앱) | 0, 11, 13, 14 |
+| | D2 | SDK·에뮬레이터·외부 자료 확인 기록 `docs/setup-status.md` | 외부 자료 확인. Pleos SDK 상태와 에뮬레이터 1차 확인(2026-11-10, 임시 앱), 앱 코드로 차량 신호·업로드 확인(2026-11-12, Task 13) | 0, 11, 13, 14 |
 | | D3 | 영상 대본, 제출 점검표 | 📐 | 16 |
 | | D4 | APK (`release/`, GitHub Releases) | 📐 | 16 |
 
@@ -89,9 +89,9 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 | V2 격자 칸 크기·`cell_of` 식 | A16 (앱도 같은 식으로 칸을 계산한다) |
 | A4 `VehicleSignals` (`guiding` 포함) | A12, A16, `PleosVehicleSignals`, `ReplayVehicleSignals` |
 | V3 `UnderpassRisk` 필드·단계 기준 | V4, C1, V6, S7(경고 시각 탐색), A3, A6, A12 `Model.kt` |
-| C1 API 계약 | V4, S5, A5, A6, V6 |
+| C1 API 계약 | V4, S5, A5 `WiperEvent`, A6 `ServerApi`, V6 |
 | C2 지하차도 목록 (`gu`, `warning_area`, `osm_ways` 포함) | V3, V7 `classify_alert`, V9, S3 `route_through`, S7 |
-| C3 시나리오 스키마 | S7, A4 `ReplayVehicleSignals`, A6 `ReplayHazardClient`, `Scenario.kt` |
+| C3 시나리오 스키마 | S7, A4 `ReplayVehicleSignals`, A6 `ReplayHazardClient`, `Scenario.kt` (지하차도·비 칸은 C1 응답과 같은 `UnderpassRiskJson`·`RainCellJson`으로 읽는다) |
 | A1 `Settings` | A3, A8, A12, A13 홈(데모 표시), 설정 화면 |
 | A3 `Action` 종류 | A11, A12, A15(경고 알림) |
 | A3 `onRerouteDeclined`·`onRerouteAccepted`·`onCautionMuted` (A11이 부른다) | A11 |
@@ -148,18 +148,18 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 
 | ID | 기능 | 동작 | 코드 위치 | 테스트 | 에뮬레이터 확인 |
 |---|---|---|---|---|---|
-| A1 | 동의·설정 | 첫 실행 동의 화면("동의" 버튼으로만). 기본 데모 모드. 차량 준비 항목별 켜기/끄기. 철회하면 전송 중지·큐 삭제 | `settings/Settings.kt`, `ui/ConsentScreen.kt`, `ui/SettingsScreen.kt`, `MainActivity.kt` | `SettingsTest` | — |
+| A1 | 동의·설정 | 첫 실행 동의 화면("동의" 버튼으로만). 기본 데모 모드. 차량 준비 항목별 켜기/끄기. 철회하면 업로드 큐 삭제(`WiperNetApp`), 전송 중지는 A12 | `settings/Settings.kt`, `ui/ConsentScreen.kt`, `ui/SettingsScreen.kt`, `MainActivity.kt` | `SettingsTest` | — |
 | A2 | 앞쪽 지하차도 찾기 | **길안내 중**: NaviHelper TBT 목록(구간 거리)을 앞에서부터 더해 첫 지하차도 진입(`TURN_ENTER_UNDER_`)까지의 경로 거리 c를 구하고, 2 km 안이면 직선거리 d ≤ c + 500 m인 지하차도 중 \|d − c\|가 가장 작은 것(내 경로 위 지하차도). 내비가 어느 지하차도인지는 주지 않아 위치로 맞춘다. 목록에 지하차도가 없으면 없음. **길안내 아님**: 2 km 안, 진행 방향 ±30° 안의 가장 가까운 지하차도. 데모 시나리오는 210초부터 입구 통과까지 모두 개포로 맞는다(사용자 결정 2026-11-11). 거리·방위각·격자 칸은 서버·시뮬레이터 Python과 같은 식 | `core/UpcomingUnderpassDetector.kt`, `core/Geo.kt` | `UpcomingUnderpassDetectorTest` | 2026-11-11 시험 앱으로 확인(앱 연결 전). 실제 NaviHelper 데이터로 `FREE_DRIVE` → 길안내 아님, 경로 요청 뒤 `ROUTE_DRIVE` → 길안내 중, TBT 누적 8,970 m 지하차도 진입 → 2 km 밖이라 없음. 내비 위치가 고정이라 2 km 안 매칭은 데모 재생으로만 확인 |
 | A3 | 위험 판단 | 기어 P면 아무것도 안 함(CAUTION 묵음도 풀림). 오프라인이 되는 순간 한 번 알림. 앞쪽 지하차도 2 km 안만 본다. WARNING 이상 → 경고 + 우회 제안(우회 지점이 있을 때), 같은 지하차도 5분 쿨다운. 거절하면 단계가 오를 때까지 경고도 묻기도 안 함(기어 P까지). CAUTION → 안내(사용자 결정 2026-11-06: 호우특보만으로 CAUTION이어도 안내한다. 2022-08-08 재현은 12:50부터 호우경보라 데모 내내 모든 지하차도가 CAUTION이다). **CAUTION은 한 번 다가갈 때 한 번**: 앞쪽 지하차도에서 60초 넘게 빠졌다 다시 잡히면 다시 안내. **"그만"**(`onCautionMuted`, A11이 듣는다) → 기어 P까지 CAUTION 안내를 끄고 WARNING 이상은 그대로(사용자 결정 2026-11-10). 방향으로만 찾은 지하차도는 2번 연속 잡혀야 알림. 우회에 동의하면 이번 접근이 끝날 때까지 그 지하차도는 조용, 거절 기록은 기어 P에서 지움(사용자 결정 2026-11-11). 마지막으로 알린 단계보다 오르면 쿨다운과 상관없이 바로, 내려간 것은 알리지 않음. 차량 준비 두 단계: 기준 10·30 mm/h마다 지금 칸 < 기준이고 앞 1~3분 거리(±30°)에 기준 이상 칸 → 가장 높은 단계로 준비("곧 비 구간" / "곧 더 강한 비 구간", S7 `prep_level`과 같은 규칙). 10분에 한 번이고, 10 뒤 30은 10분 안이어도 바로, 30 뒤 10은 10분 안이면 안 함(사용자 결정 2026-11-10). 설정에서 끈 준비 항목은 `false`로 넘김 | `core/Model.kt`, `core/HazardDecider.kt` | `HazardDeciderTest` | 2026-11-11 시험 앱에서 데모 시나리오를 실제 판단 코드 + Pleos TTS·STT로 재생(앱 연결 전). 30초 "곧 비 구간", 140초 "곧 더 강한 비 구간", 210초 개포 2.0 km 경고 + 우회 질문 → "응" 인식 → 우회 경로 끝(590초)까지 추가 안내 없음. 거절·무응답은 JVM 재생으로 확인(420초 DANGER로 올라 다시 경고·질문) |
-| A4 | 차량 신호 | 와이퍼(Vehicle SDK, capability 확인), 위치(FusedLocation, 안 되면 NaviHelper), 기어, TBT(NaviHelper), 창문, 길안내 중인지(NaviHelper, 없으면 최근 30초 TBT). 데모 모드는 C3를 시간대로 재생 | `data/VehicleSignals.kt`, `data/PleosVehicleSignals.kt`, `data/ReplayVehicleSignals.kt` | `ScenarioTest`(재생만) | — |
-| A5 | 업로드 큐·임시 ID | 파일 큐, 최대 5,000건(넘으면 가장 오래된 것부터 버림), 한 번에 200건, 실패하면 남기고 순서 유지. 임시 ID는 12~18분 사이 무작위 간격으로 회전(설계 6.11). 동의 없으면 안 보냄 | `data/UploadQueue.kt`, `data/TempId.kt` | `UploadQueueTest`, `TempIdTest` | — |
-| A6 | 위험 정보 클라이언트 | 라이브: 5초마다 조회(서버 시계 포함), 2번 연속 실패면 오프라인, 내 차 3 km 칸만 보관. 데모: C3 재생 | `data/HazardClient.kt`, `data/LiveHazardClient.kt`, `data/ReplayHazardClient.kt`, `data/Scenario.kt` | `HazardClientTest` | — |
+| A4 | 차량 신호 | `VehicleSignals`: 와이퍼(스위치, 상태), 위치, 기어(`P/R/N/D`), TBT, 창문 열림, 길안내 중. 값을 못 읽는 신호는 아무것도 내지 않는다. **Pleos**: Vehicle SDK는 연결 완료 콜백과 와이퍼 스위치 리스너가 없어 와이퍼·기어·창문 4곳을 1초마다 읽고, 와이퍼 상태 리스너가 오면 스위치·상태를 함께 다시 읽고, 겹친 읽기는 나중에 시작한 것만 쓴다(상태가 스위치보다 약 50 ms 먼저 바뀌어, 반쪽만 고치면 `OFF/ON` 같은 없는 조합이 나온다). 창문은 4곳 중 하나라도 0보다 크면 열림. 위치는 FusedLocation, 지원하지 않으면 NaviHelper. 속도는 직전 위치에서, 방향은 5 m 넘게 움직였을 때 계산한다(에뮬레이터 FusedLocation은 방향이 0이고 둘 다 속도를 주지 않는다). TBT·길안내 중은 NaviHelper(`onTBTInfo`, `RouteStateInfo.naviMode`가 `ROUTE_GUIDING`·`SIMULATION_GUIDING`이면 길안내 중, 2초마다 조회). 길안내 중은 이 한 곳에서만 정한다(`onNavigationStatus`까지 쓰면 둘이 다를 때 값이 2초마다 뒤집힌다). **재생**: C3 `my_car`를 시각대로 내고 `speed`로 배속, `switchToBypass()` 뒤 `from_t`부터 우회 경로. 시나리오 시각 `t`를 A6 재생이 같이 쓴다. 와이퍼 상태는 스위치가 `OFF`면 `OFF`, 아니면 `ON`. 길안내 중은 늘 참 | `data/VehicleSignals.kt`, `data/PleosVehicleSignals.kt`, `data/ReplayVehicleSignals.kt` | `ScenarioTest`(재생) | 2026-11-12 디버그 확인 화면(`SignalCheckActivity`, 디버그 빌드만). Virtual Console 앞 와이퍼 Low → `CONTINUOUS_LEVEL_1/ON`, High → `CONTINUOUS_LEVEL_3/ON`, Auto → `AUTO/ON`, Off → `OFF/OFF`(바꿀 때마다 한 번씩, 중간 조합 없음). 기어 `P`, 창문 닫힘, FusedLocation 위치가 왔다. NaviHelper는 에뮬레이터 내비 앱이 "내비게이션 실행이 지연되고 있습니다"에서 멈춰(다시 시도·재시작해도 같음, 로그 `navi not ready`) TBT·길안내 중을 확인하지 못했다. 같은 호출은 2026-11-11 시험 앱에서 확인했다 |
+| A5 | 업로드 큐·임시 ID | `WiperEvent`는 C1 이벤트 필드 그대로(`auto_wpm`은 있을 때만). 파일 큐(한 줄에 하나, 임시 파일을 바꿔 넣어 저장), 최대 5,000건(넘으면 가장 오래된 것부터 버림), 앞에서부터 200건씩 보내고, 연결 실패·5xx면 멈춰 남긴다. 4xx는 다시 보내도 같아 그 묶음을 버린다. 보내기는 한 번에 하나만 돌고, 보내는 동안 들어온 이벤트는 남는다. 파일 읽기·쓰기는 IO 스레드에서 하고, 저장은 디스크에 내린 뒤 바꿔 넣으며, 깨진 줄은 읽을 때 버린다. 임시 ID는 12~18분 사이 무작위 간격으로 새 UUID(설계 6.11). 동의 철회 때 비운다. 언제 넣고 보낼지(동의·라이브·서버 시계)는 A12·A16 | `data/UploadQueue.kt`, `data/TempId.kt`, `WiperNetApp.kt` | `UploadQueueTest`, `TempIdTest` | 2026-11-12 확인. 라이브·동의 상태에서 와이퍼를 바꿀 때마다 로컬 서버 `/v1/debug/vehicles`에 그 값이 왔다. 서버를 끄고 바꾸면 큐에 1건이 남고, 서버를 다시 켠 뒤 다음 변경 때 함께 보내져 0건이 됐다 |
+| A6 | 위험 정보 클라이언트 | `HazardClient.hazards`. **라이브**: 5초마다 `/v1/clock`, `/v1/rain-map`, `/v1/underpass-risk`(`ServerApi`, 요청마다 4초 제한). 2번 연속 실패면 오프라인이고 마지막 값은 그대로 둔다. 서버 주소가 잘못되면(빈 칸, `http://` 없음) 실패로 센다. 비 칸은 내 위치 3 km 안만 보관(위치를 모르면 모두). 서버 시계가 없으면 `serverClock`은 null. **재생**: 시나리오 시각 t 이하에서 가장 늦은 `hazards` 장면 | `data/HazardClient.kt`, `data/ServerApi.kt`, `data/LiveHazardClient.kt`, `data/ReplayHazardClient.kt`, `data/Scenario.kt` | `HazardClientTest`(MockWebServer), `ScenarioTest` | 2026-11-12 확인. 에뮬레이터에서 `http://10.0.2.2:8001`의 서버 시계와 지하차도 6곳을 받았고, 서버를 끄자 오프라인이 됐다 |
 | A7 | 음성 안내 | Pleos TTS(`ON_DEVICE`) | `act/Announcer.kt` | `ActionRunnerTest`(가짜) | — |
 | A8 | 차량 준비 | 창문 닫기(열려 있으면), 김서림 방지(디프로스터), 전조등 켜기를 Vehicle SDK로 직접 제어한다. 설정에서 켠 항목만 한다. 성공 콜백만으로는 반영을 알 수 없어 다시 읽거나 변경 이벤트로 확인하고, 반영되지 않았거나 기능이 없는 항목은 음성으로 권한다(사용자 결정 2026-11-10) | `act/VehiclePrep.kt` | `ActionRunnerTest`(가짜) | — |
 | A9 | 우회 경로 | 라이브: NaviHelper 경유지 추가 + 재탐색(경유지 최대 2개). 데모: C3의 우회 경로로 갈아탐 | `act/Rerouter.kt` | `ActionRunnerTest`(가짜) | — |
 | A10 | 예/아니오 응답 | 음성(STT "네/아니오")과 시스템 알림의 예/아니오 버튼 중 먼저 온 답. 8초 무응답이면 응답 없음. 앱 화면에는 버튼을 띄우지 않는다 | `act/ConsentPrompt.kt`, `act/NotificationPrompt.kt` | `ActionRunnerTest`(가짜), `EitherPromptTest` | — |
 | A11 | 동작 실행기 | A3의 동작을 계획 Task 14의 **고정 문구**로 실행한다. 첫 문장은 근거로 고른다(재난문자 통제 > 주변 차량 > 레이더), 호우특보는 한 문장 덧붙임. CAUTION 안내 뒤 8초 듣고 "그만"·"그만해"·"알았어" 같은 말이면 A3 `onCautionMuted` | `act/ActionRunner.kt` | `ActionRunnerTest` | — |
-| A12 | 앱 컨트롤러 | A15 서비스 안에서 돈다. 모드에 따라 신호·위험 정보 구현을 고른다. 1초마다 찾기 → 판단 → 실행. 라이브 모드는 A16이 고른 이벤트만 큐에 넣고 10초마다 전송(이벤트 시각 = 서버 시계, 없으면 안 넣음). 데모 모드는 업로드 안 함 | `AppController.kt` | — | — |
+| A12 | 앱 컨트롤러 | A15 서비스 안에서 돈다. 모드에 따라 신호·위험 정보 구현을 고른다. 1초마다 찾기 → 판단 → 실행. 라이브 모드는 A16이 고른 이벤트만 큐에 넣고 10초마다 전송(이벤트 시각 = 서버 시계, 없으면 안 넣음). 데모 모드는 업로드 안 함. **Task 15에서 정할 것:** A6는 오프라인 동안 마지막 서버 시계를 그대로 두므로, 그동안 넣는 이벤트가 모두 같은 옛 시각이 된다. 오프라인이면 넣지 않을지, 마지막 시계에 지난 시간을 더할지 정한다 | `AppController.kt` | — | — |
 | A13 | 주행 화면 | 평소에는 작은 상태 표시만. 경고가 있을 때만 위쪽 큰 띠(이름, 거리, 단계 색) | `ui/DrivingScreen.kt` | — | — |
 | A14 | 비 지도 화면 | 기어 P에서만. 내 위치 중심 3 km의 비 칸, 지하차도 마커, 진행 방향 | `ui/RainMapScreen.kt` | — | — |
 | A15 | 뒤에서 도는 서비스 | 포그라운드 서비스(상시 알림). 동의 후 첫 실행에 시작, 화면을 닫아도 계속, 철회하면 멈춤. 부팅 때 자동 시작 시도. 경고는 음성 + 시스템 알림이고 앱 화면을 앞으로 띄우지 않는다 | `service/WiperNetService.kt`, `service/BootReceiver.kt` | — | — |
@@ -209,13 +209,13 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 | 안드로이드 에뮬레이터 위치 기능이 FusedLocation에 반영되는가 | A4, 라이브 시연 | 확인. `adb emu geo fix`로 바꾼 위치가 약 1초 뒤 콜백으로 온다. Playground는 "준비 중"이지만 동작한다 (D2) |
 | NaviHelper `onTBTInfo`, `onCurrentLocationInfo`가 실제로 오는가 | A2, A4 | 확인. `onTBTInfo`는 경로 전체 안내 지점 목록(종류, 앞 지점부터의 구간 거리 m, 방면 글자)이고 지하차도 진입은 `TURN_ENTER_UNDER_L/R/C`. 어느 지하차도인지는 주지 않는다. 다만 내비 현재 위치가 에뮬레이터 기본 위치에 고정이라(GPS·Virtual Console 속도로 안 움직임) 주행 중 갱신은 확인 못 함 (D2) |
 | 차가 켜질 때 앱이 뒤에서 자동 시작되는가 | 뒤에서 도는 앱 모델(설계 5.6) | 미확인 |
-| Virtual Console 와이퍼 Low/High가 SDK에서 어떤 값으로 오는가 | C4, V1 | 일부 확인. 에뮬레이터가 지원한다고 알리는 스위치 값은 `OFF, CONTINUOUS_LEVEL_1, CONTINUOUS_LEVEL_3, AUTO`뿐이다. Low/High를 Virtual Console에서 바꿔 본 값은 미확인 (D2) |
+| Virtual Console 와이퍼 Low/High가 SDK에서 어떤 값으로 오는가 | C4, V1 | 확인. Low → `CONTINUOUS_LEVEL_1`, High → `CONTINUOUS_LEVEL_3`, Auto → `AUTO`(상태 `ON`), Off → `OFF/OFF`. 간헐(`INTERMITTENT_*`)은 에뮬레이터에 없다. 상태 리스너가 스위치보다 약 50 ms 먼저 온다 (D2) |
 | 와이퍼·기어를 읽을 수 있는가 | A4 | 확인. 와이퍼 스위치·상태와 기어(`GEAR_PARK`)를 읽고 리스너도 동작한다 (D2) |
 | 시스템 알림의 예/아니오 버튼이 동작하는가 | A10 | 미확인 |
 | Window·HVAC·Light 제어가 Virtual Console에 반영되는가 | A8 | 확인. **Virtual Console이 브라우저에 열려 있을 때만** 반영된다. 닫혀 있으면 성공 콜백만 오고 값이 그대로다. 창문 위치는 앱 0~10 = Virtual Console 0~100% (D2) |
 | Pleos TTS `ON_DEVICE`가 동작하는가 (Playground는 "준비 중") | A7 | 확인. 한국어 재생됨 (D2) |
 | Pleos STT `ON_DEVICE`가 "네/아니오"를 알아듣는가 (Playground는 "준비 중") | A10, A11 "그만" | 확인. 그만·그만해·그만 말해·알았어·적당히 해·네·아니요 10번 모두 정확히 인식, 말이 끝나고 약 0.5초. 말이 없으면 스스로 끝나지 않아 앱이 `stop()`을 불러야 하고, 최종 글자(`completed=true`)는 `onEndedRecognition` 직후에 온다. 에코 제거가 꺼져 있어 안내 음성이 끝난 뒤에 듣는다. 호스트 마이크는 `adb emu avd hostmicon`으로 켰다 (D2) |
-| NaviHelper에 길안내 중인지 알려 주는 API가 있는가 | A4, A16 | 확인. `onNavigationStatus`가 경로 요청 뒤 `ROUTE_DRIVE`로 온다(값: `INACTIVE`, `INITIALIZING`, `FREE_DRIVE`, `ROUTE_DRIVE`). `RouteStateInfo.naviMode`도 `ROUTE_GUIDING`으로 바뀐다 (D2) |
+| NaviHelper에 길안내 중인지 알려 주는 API가 있는가 | A4, A16 | 확인. `onNavigationStatus`가 경로 요청 뒤 `ROUTE_DRIVE`로 온다(값: `INACTIVE`, `INITIALIZING`, `FREE_DRIVE`, `ROUTE_DRIVE`). `RouteStateInfo.naviMode`도 `ROUTE_GUIDING`으로 바뀐다. A4는 조회할 수 있는 `naviMode` 하나만 쓴다 (D2) |
 | 포그라운드 서비스가 Pleos에서 화면 밖에서도 계속 도는가 | A15 | 미확인 |
 | AUTO 와이퍼에서 상태(ON/OFF)가 와이퍼 한 번마다 바뀌는가 | A16 `AutoWipeCounter`, V1 | 미확인 |
 | 차가 움직일 때 앱 화면이 막히는가 (Android Automotive는 `distractionOptimized`가 없는 화면을 주행 중 막는다) | A13 주행 화면, A1 | 확인. 시험 앱(설정 없음)이 기어 D·60 km/h에서 "주행 중에는 사용할 수 없습니다."로 가려졌다. 주행 화면은 Task 15에서 설정을 넣고 다시 확인한다 (D2) |
@@ -241,15 +241,15 @@ ID(`S1`, `V2`, `A3` …)는 이 문서 안에서 기능을 가리키는 이름�
 
 **그 밖의 위험**
 - AUTO 세기 추정식(V1, S4)은 검증하지 않은 가정이다.
-- **익명성은 가명 수준이다**(설계 6.11). 위치가 정밀해 ID 교체 앞뒤를 위치로 이을 수 있고, 같은 ID 안의 몇 분짜리 경로가 2시간 남는다. Apple·Google·C-ITS·벤츠와 같은 계열(임의 ID 회전, 여러 차 합치기, 짧은 보관, 동의)이고, 보완으로 ID 교체 시점 무작위(S5 반영, A5는 Task 13), 출발·도착 300 m 안 안 보내기(A16, Task 15), 배포 서버에서 `/v1/debug/vehicles` 끄기를 한다. 위치 대신 칸 번호만 보내는 방법은 검토만 했다.
+- **익명성은 가명 수준이다**(설계 6.11). 위치가 정밀해 ID 교체 앞뒤를 위치로 이을 수 있고, 같은 ID 안의 몇 분짜리 경로가 2시간 남는다. Apple·Google·C-ITS·벤츠와 같은 계열(임의 ID 회전, 여러 차 합치기, 짧은 보관, 동의)이고, 보완으로 ID 교체 시점 무작위(S5·A5 반영), 출발·도착 300 m 안 안 보내기(A16, Task 15), 배포 서버에서 `/v1/debug/vehicles` 끄기를 한다. 위치 대신 칸 번호만 보내는 방법은 검토만 했다.
 - 뷰어 배경 OSM 타일은 데모·개발 전용이다. OSM 타일 정책상 상업 서비스는 언제든 막힐 수 있다. 차량 앱 비 지도(A14)의 지도는 Task 15에서 상용 이용이 되는 것으로 따로 정한다. 영상에 지도가 나오면 화면 구석 출처 + 끝 자막이나 영상 설명에 `openstreetmap.org/copyright`를 넣는다(OSMF 출처 표시 지침, Task 16).
 - 미래 밀도(2,113대)는 tick 하나에 약 0.25초가 걸려 60배속(tick당 0.17초)을 따라가지 못하고 약 40배속으로 돈다. 17~23시 최대 속도는 약 9분이다. 라이브 시연의 1배속 구간에는 문제없다. 느리면 강우장 계산을 묶어서 하는 쪽부터 줄인다.
 - **시뮬레이션의 한계이자 기획서 근거:** 데모 지역 안 AWS는 서초(401) 하나다. 서초를 빼고 주변 관측소로 메우면 20~21시 평균이 56.4 mm/h로 실제 92.0 mm/h보다 약 39% 낮다(S6 (b)). 관측소 사이를 메울 필요가 있다는 실측 근거다. 다만 시뮬레이터 차는 이 강우장으로 와이퍼를 돌리므로 "와이퍼가 관측소가 놓친 비를 잡는다"는 시뮬레이션으로 증명하지 않는다(설계 6.5-1).
 - 와이퍼는 60 mm/h를 넘는 비를 구분하지 못한다(V1 상한). 레이더(V8)가 없으면 1시간 누적은 최대 60 mm라 누적 기준 "위험"(80 mm)에 닿지 않는다. 세기 기준으로는 위험 단계가 나온다(설계 6.10.2).
 - 차가 없어도 기록 재생 레이더만으로 20:00(사평)·20:30(6곳 모두)에 WARNING이 나온다. S6 (d)에서는 6곳 모두 와이퍼만(미래 밀도)이 외부 자료만보다 먼저 WARNING을 낸다. 데모 시나리오(S7) 첫 경고 근거는 `vehicles`·`kma_warning`이고 레이더는 없다. 지하차도들은 출발 때부터 특보로 CAUTION이지만, 앱이 개포를 앞쪽 지하차도로 잡을 때는 이미 WARNING이라 CAUTION 안내 음성은 나오지 않는다.
 - **와이퍼 비 지도는 지금 어디에 비가 오는지를 보여 줄 뿐 예보가 아니다**(S7에서 확인, 2026-11-10). 칸마다 차 3대가 모여야 값이 생겨 몇 분 늦는데, 2022-08-08 비는 데모 지역에 10분 안에 거의 한꺼번에 내렸다(개포 주변 17:30 0.4~2.9 → 17:40 6~35 mm/h). 그래서 "아직 맑은 곳에서 앞 비 구간을 보고 준비"는 첫 경고와 같은 주행 안에서 한 번도 나오지 않았고, 데모 차는 이미 20~30 mm/h 비 속에서 "곧 더 강한 비 구간" 준비를 한다. 이미 내리는 비 구간으로 들어갈 때(1단계)는 된다. 1차 폭우 끝물 18:20~18:46에는 경로 위 52개 지점 중 최대 19곳에서 1단계가 성립했다. 비가 막 시작되거나 빠르게 몰려오는 곳을 미리 알려면 레이더 예측이 필요하다. 레이더(V8)를 차량 준비에 쓰는 것은 추후 보완이다(이날 레이더는 센 비를 약 40%로 적게 잡는다). 강우장을 10분 계단 대신 시간 보간으로 바꿔도 결과는 같았다.
-- 데모 경로는 계획의 약 6분보다 긴 약 9.5분이다. 출발 약 3분 뒤 입구 2 km 안에 들어서려면 출발지가 입구에서 약 3.5 km 떨어져야 한다. 앱 데모 재생 배속(Task 13)으로 줄일 수 있다.
-- `tbt.type` `TURN_ENTER_UNDER_C`는 계획 값이다. Pleos NaviHelper의 실제 값은 에뮬레이터에서 지하차도를 지나는 길안내를 띄워야 알 수 있어 Task 13(A4)에서 확인하고, 다르면 S7 `TBT_TYPE`을 바꾼다.
+- 데모 경로는 계획의 약 6분보다 긴 약 9.5분이다. 출발 약 3분 뒤 입구 2 km 안에 들어서려면 출발지가 입구에서 약 3.5 km 떨어져야 한다. 앱 데모 재생 배속(A4 `ReplayVehicleSignals`의 `speed`)으로 줄일 수 있다.
+- `tbt.type` `TURN_ENTER_UNDER_C`는 계획 값이다. Pleos NaviHelper의 실제 값은 2026-11-11 시험 앱 경로에서는 `TURN_ENTER_UNDER_L`로 왔다(D2). A2는 `TURN_ENTER_UNDER_` 앞부분으로 찾으므로 L·R·C 모두 맞는다. 개포를 지나는 경로의 실제 값은 2026-11-12 에뮬레이터 내비가 멈춰 확인하지 못했다. 다르게 나오면 S7 `TBT_TYPE`을 바꾼다.
 - 지하차도 6곳이 가까이 모여 있어 여러 곳을 지나는 경로에서는 CAUTION 안내가 곳마다 한 번씩 나온다(A3). 데모 시나리오에서는 개포가 처음 잡힐 때 이미 WARNING이라 CAUTION 안내와 "그만"은 영상에 나오지 않는다.
 - 에뮬레이터 내비는 현재 위치가 기본 위치(성남)에 고정이라, 라이브 모드에서 내비 경로 위 지하차도 경고를 움직이며 보여 줄 수 없다. 데모 모드는 녹화한 TBT를 재생하므로 영향이 없다.
 - 레이더(V8)는 2022-08-08 센 비를 AWS의 약 40%로 적게 잡아, 이날 데모 지역에서 60 mm/h를 거의 넘지 않는다. 그래서 4c의 "포화 구간 레이더 대체"는 이날 거의 일어나지 않는다. 레이더는 차 없는 칸 보완과 비 시작·그침 시각 확인에 주로 쓰인다.

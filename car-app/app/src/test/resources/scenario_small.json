@@ -1,0 +1,348 @@
+{
+ "start": "2022-08-08T17:44:00+09:00",
+ "step_s": 5,
+ "route_underpass": "gaepo",
+ "my_car": [
+  {
+   "t": 0,
+   "lat": 37.457511,
+   "lng": 127.070808,
+   "heading": 69.6,
+   "speed_mps": 3.86,
+   "gear": "D",
+   "wiper": "CONTINUOUS_LEVEL_3",
+   "window_open": true,
+   "tbt": null
+  },
+  {
+   "t": 5,
+   "lat": 37.457571,
+   "lng": 127.071013,
+   "heading": 69.6,
+   "speed_mps": 3.86,
+   "gear": "D",
+   "wiper": "CONTINUOUS_LEVEL_3",
+   "window_open": true,
+   "tbt": null
+  },
+  {
+   "t": 205,
+   "lat": 37.46014,
+   "lng": 127.075238,
+   "heading": 296.5,
+   "speed_mps": 6.09,
+   "gear": "D",
+   "wiper": "CONTINUOUS_LEVEL_3",
+   "window_open": true,
+   "tbt": null
+  },
+  {
+   "t": 210,
+   "lat": 37.460263,
+   "lng": 127.074929,
+   "heading": 296.5,
+   "speed_mps": 6.09,
+   "gear": "D",
+   "wiper": "CONTINUOUS_LEVEL_3",
+   "window_open": true,
+   "tbt": {
+    "type": "TURN_ENTER_UNDER_C",
+    "distance_m": 1998
+   }
+  },
+  {
+   "t": 215,
+   "lat": 37.4604,
+   "lng": 127.074631,
+   "heading": 300.5,
+   "speed_mps": 6.09,
+   "gear": "D",
+   "wiper": "CONTINUOUS_LEVEL_3",
+   "window_open": true,
+   "tbt": {
+    "type": "TURN_ENTER_UNDER_C",
+    "distance_m": 1968
+   }
+  }
+ ],
+ "bypass": {
+  "from_t": 210,
+  "my_car": [
+   {
+    "t": 215,
+    "lat": 37.4604,
+    "lng": 127.074631,
+    "heading": 300.5,
+    "speed_mps": 6.09,
+    "gear": "D",
+    "wiper": "CONTINUOUS_LEVEL_3",
+    "window_open": true,
+    "tbt": null
+   },
+   {
+    "t": 220,
+    "lat": 37.46054,
+    "lng": 127.074334,
+    "heading": 308.7,
+    "speed_mps": 6.09,
+    "gear": "D",
+    "wiper": "CONTINUOUS_LEVEL_3",
+    "window_open": true,
+    "tbt": null
+   }
+  ]
+ },
+ "hazards": [
+  {
+   "t": 0,
+   "rain_cells": [
+    {
+     "lat": 37.46925,
+     "lng": 127.02165,
+     "mmph": 3.2
+    },
+    {
+     "lat": 37.47375,
+     "lng": 127.05015,
+     "mmph": 10.0
+    }
+   ],
+   "underpasses": [
+    {
+     "id": "gaepo",
+     "name": "개포지하차도",
+     "lat": 37.475985,
+     "lng": 127.058793,
+     "level": "CAUTION",
+     "mmph_10m": 25.0,
+     "acc1h_mm": 4.5,
+     "bypass_waypoint": {
+      "lat": 37.475909,
+      "lng": 127.058771
+     },
+     "reasons": [
+      "vehicles",
+      "kma_warning"
+     ],
+     "alerts": []
+    },
+    {
+     "id": "guryong",
+     "name": "구룡지하차도",
+     "lat": 37.471662,
+     "lng": 127.051436,
+     "level": "CAUTION",
+     "mmph_10m": 25.0,
+     "acc1h_mm": 4.6,
+     "bypass_waypoint": {
+      "lat": 37.471642,
+      "lng": 127.051561
+     },
+     "reasons": [
+      "vehicles",
+      "kma_warning"
+     ],
+     "alerts": []
+    },
+    {
+     "id": "daemo",
+     "name": "대모지하차도",
+     "lat": 37.480643,
+     "lng": 127.067211,
+     "level": "CAUTION",
+     "mmph_10m": 25.0,
+     "acc1h_mm": 4.5,
+     "bypass_waypoint": {
+      "lat": 37.480701,
+      "lng": 127.06717
+     },
+     "reasons": [
+      "vehicles",
+      "kma_warning"
+     ],
+     "alerts": []
+    },
+    {
+     "id": "sapyeong",
+     "name": "사평지하도로",
+     "lat": 37.501987,
+     "lng": 127.003144,
+     "level": "WARNING",
+     "mmph_10m": 44.0,
+     "acc1h_mm": 7.9,
+     "bypass_waypoint": {
+      "lat": 37.501944,
+      "lng": 127.003335
+     },
+     "reasons": [
+      "vehicles",
+      "kma_warning"
+     ],
+     "alerts": []
+    },
+    {
+     "id": "yangjae",
+     "name": "양재지하차도",
+     "lat": 37.484542,
+     "lng": 127.034175,
+     "level": "CAUTION",
+     "mmph_10m": 25.0,
+     "acc1h_mm": 4.2,
+     "bypass_waypoint": {
+      "lat": 37.484552,
+      "lng": 127.034195
+     },
+     "reasons": [
+      "vehicles",
+      "kma_warning"
+     ],
+     "alerts": []
+    },
+    {
+     "id": "yangjaecheon",
+     "name": "양재천지하차도",
+     "lat": 37.471148,
+     "lng": 127.032513,
+     "level": "WARNING",
+     "mmph_10m": 40.0,
+     "acc1h_mm": 7.2,
+     "bypass_waypoint": {
+      "lat": 37.471689,
+      "lng": 127.03181
+     },
+     "reasons": [
+      "vehicles",
+      "kma_warning"
+     ],
+     "alerts": []
+    }
+   ]
+  },
+  {
+   "t": 210,
+   "rain_cells": [
+    {
+     "lat": 37.46925,
+     "lng": 127.02165,
+     "mmph": 44.0
+    },
+    {
+     "lat": 37.47375,
+     "lng": 127.05015,
+     "mmph": 32.5
+    }
+   ],
+   "underpasses": [
+    {
+     "id": "gaepo",
+     "name": "개포지하차도",
+     "lat": 37.475985,
+     "lng": 127.058793,
+     "level": "WARNING",
+     "mmph_10m": 32.5,
+     "acc1h_mm": 5.7,
+     "bypass_waypoint": {
+      "lat": 37.475909,
+      "lng": 127.058771
+     },
+     "reasons": [
+      "vehicles",
+      "kma_warning"
+     ],
+     "alerts": []
+    },
+    {
+     "id": "guryong",
+     "name": "구룡지하차도",
+     "lat": 37.471662,
+     "lng": 127.051436,
+     "level": "WARNING",
+     "mmph_10m": 40.0,
+     "acc1h_mm": 7.2,
+     "bypass_waypoint": {
+      "lat": 37.471642,
+      "lng": 127.051561
+     },
+     "reasons": [
+      "vehicles",
+      "kma_warning"
+     ],
+     "alerts": []
+    },
+    {
+     "id": "daemo",
+     "name": "대모지하차도",
+     "lat": 37.480643,
+     "lng": 127.067211,
+     "level": "WARNING",
+     "mmph_10m": 40.0,
+     "acc1h_mm": 7.2,
+     "bypass_waypoint": {
+      "lat": 37.480701,
+      "lng": 127.06717
+     },
+     "reasons": [
+      "vehicles",
+      "kma_warning"
+     ],
+     "alerts": []
+    },
+    {
+     "id": "sapyeong",
+     "name": "사평지하도로",
+     "lat": 37.501987,
+     "lng": 127.003144,
+     "level": "WARNING",
+     "mmph_10m": 52.0,
+     "acc1h_mm": 9.5,
+     "bypass_waypoint": {
+      "lat": 37.501944,
+      "lng": 127.003335
+     },
+     "reasons": [
+      "vehicles",
+      "radar",
+      "kma_warning"
+     ],
+     "alerts": []
+    },
+    {
+     "id": "yangjae",
+     "name": "양재지하차도",
+     "lat": 37.484542,
+     "lng": 127.034175,
+     "level": "WARNING",
+     "mmph_10m": 40.0,
+     "acc1h_mm": 6.7,
+     "bypass_waypoint": {
+      "lat": 37.484552,
+      "lng": 127.034195
+     },
+     "reasons": [
+      "vehicles",
+      "kma_warning"
+     ],
+     "alerts": []
+    },
+    {
+     "id": "yangjaecheon",
+     "name": "양재천지하차도",
+     "lat": 37.471148,
+     "lng": 127.032513,
+     "level": "WARNING",
+     "mmph_10m": 44.0,
+     "acc1h_mm": 7.8,
+     "bypass_waypoint": {
+      "lat": 37.471689,
+      "lng": 127.03181
+     },
+     "reasons": [
+      "vehicles",
+      "kma_warning"
+     ],
+     "alerts": []
+    }
+   ]
+  }
+ ]
+}
