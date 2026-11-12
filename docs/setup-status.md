@@ -41,7 +41,20 @@ SDK 저장소는 `https://nexus-playground.pleos.ai/repository/maven-releases/`�
 - **와이퍼 값:** Low → `CONTINUOUS_LEVEL_1/ON`, High → `CONTINUOUS_LEVEL_3/ON`, Auto → `AUTO/ON`, Off → `OFF/OFF`. 바꿀 때마다 로컬 서버 `/v1/debug/vehicles`에 몇 초 안에 그 값이 왔다. 상태 리스너가 스위치보다 약 50 ms 먼저 와서, 상태만 고치면 `OFF/ON`, `AUTO/OFF` 같은 잠깐의 조합이 생겼다. 그래서 앱은 상태 리스너가 오면 스위치·상태를 함께 다시 읽는다.
 - **Vehicle SDK:** 연결 완료 콜백(`initialize()`는 반환값·콜백 없음)과 와이퍼 스위치 리스너(`registerWiperState`만 있음)가 없다. 앱은 와이퍼·기어·창문을 1초마다 읽는다. 기어 `GEAR_PARK`, 창문 4곳 0(닫힘)을 읽었다.
 - **오프라인과 큐:** 서버를 끄면 약 10초 뒤 오프라인이 됐다. 꺼진 동안 바꾼 와이퍼 값은 큐에 1건 남았고, 서버를 다시 켠 뒤 다음 변경 때 함께 보내져 큐가 비었다.
-- **NaviHelper는 이번에 확인하지 못했다.** 콜드 부팅 뒤 내비 앱이 "내비게이션 실행이 지연되고 있습니다"에서 멈췄다. 다시 시도와 강제 종료 뒤 재실행도 같았다. 로그에는 `navi not ready`가 남고, 상태는 `appStatus=AuthComplete, engineStatus=NaviEngineComplete, mapStatus=MapInitComplete`였다. 그래서 앱의 TBT·길안내 중 신호와 개포를 지나는 경로의 실제 지하차도 TBT 값은 확인하지 못했다. 같은 호출은 2026-11-11 시험 앱에서 동작했다(위 NaviHelper 줄).
+- **NaviHelper는 이번에 확인하지 못했다.** 콜드 부팅 뒤 내비 앱이 "내비게이션 실행이 지연되고 있습니다"에서 멈췄다. 다시 시도와 강제 종료 뒤 재실행도 같았다. 로그에는 `navi not ready`가 남고, 상태는 `appStatus=AuthComplete, engineStatus=NaviEngineComplete, mapStatus=MapInitComplete`였다. 그래서 앱의 TBT·길안내 중 신호와 개포를 지나는 경로의 실제 지하차도 TBT 값은 확인하지 못했다. 같은 호출은 2026-11-11 시험 앱에서 동작했다(위 NaviHelper 줄). 에뮬레이터를 다시 콜드 부팅하자 내비가 정상으로 돌아와 Task 14 때 확인했다(아래).
+
+### 앱 코드로 확인한 음성·차량 준비·우회 (2026-11-12, Task 14)
+
+디버그 확인 화면의 버튼(또는 `--es action warn|offer|inform|prepare|offline|reroute`)으로 `ActionRunner`를 실제 Pleos 구현과 함께 돌렸다.
+
+- **Virtual Console HTTP로 차 상태를 맞춘다.** `PUT /vehicle/body?window_fl=50&window_rr=30`(창문 %, `window_fl/fr/rl/rr`), `PUT /vehicle/hvac?front_defroster=false`, `PUT /vehicle/lights?feature=headlamp_mode&value=Off`. 쓸 수 있는 항목과 값은 `GET /vehicle/catalog`에 있다. "Virtual Console을 닫은 상태"는 하트비트(`POST /browser/session`)를 멈추고 3초 넘게 기다리면 된다(`emulator_active: false`).
+- **차량 준비:** 열린 상태에서는 창문·디프로스터·하향등이 모두 다시 읽은 값과 Virtual Console(`windows` 0, `front_defroster_on: true`, `headlamp_mode: LowBeam`)에 반영됐다. 다시 실행하면 모두 `ALREADY`라 말하지 않았다. 닫은 상태에서는 set 성공 콜백만 오고 2초 동안 값이 그대로라 모두 `NOT_APPLIED`가 됐고 "…켜 주세요"로 권했다.
+- **TTS:** 경고 문장 하나가 `say` 시작부터 `onDone`까지 약 6.6초, 오프라인 문장은 약 4.6초였다.
+- **STT 무응답:** 질문 뒤 8초가 지나 `stop()`을 부르고 1.5초 더 기다린 뒤 null로 끝났다. 대답 인식은 사용자가 말할 수 없는 환경이라 확인하지 못했다. `adb emu avd hostmicon` 뒤 맥 `say -v Yuna "응"`을 스피커로 틀어도 인식되지 않았다.
+- **NaviHelper:** 콜드 부팅 뒤 내비가 정상이었다. 시험 앱으로 목적지 (37.4770, 127.0540)을 요청하자 `ROUTE_DRIVE`와 TBT `LEFT 80, LEFT 470, LEFT 1570, ENTER_UNDER_L 8970, LEFT 9550, RIGHT 9830, ARRIVE 9860`(누적 m)이 왔다. 앱의 `PleosVehicleSignals`도 길안내 중 true와 같은 TBT 목록을 받았다.
+- **경유지 추가:** 길안내 중에 `addWaypoint(RequestWaypointInfo(lat, lng, "우회 지점", WaypointIndex.FIRST, …))` + `requestReRoute()`를 부르자 내비 다음 목적지가 "우회 지점"으로 바뀌고 경로를 다시 찾았다(32분, 10 km). 앱은 약 6초 뒤 성공 콜백을 받았다. 다시 찾은 경로의 TBT(구간 m)는 `RIGHT 700, RIGHT 50, ENTER_IC_C 110, TOLL 40, EXIT_IC_R 7400, ENTER_UNDER_L 1000, LEFT 1200, WAY 20, UTURN 680, RIGHT 290, RIGHT 260, ARRIVE 30`이다. 누적하면 지하차도 진입 9,300 m, 경유지 10,520 m, 유턴 11,200 m라, 경유지보다 1,220 m 앞에서 어떤 지하차도를 지나고(TBT는 어느 지하차도인지 주지 않는다) 경유지를 지난 뒤 유턴했다.
+- **내비 현재 위치가 성남에 고정되는 까닭을 찾아봤지만 바꿀 방법은 찾지 못했다.** `adb emu geo fix`는 Android GPS와 FusedLocation을 바꾸지만(`dumpsys location`), 내비 앱이 Android GPS에 건 요청은 PASSIVE와 30분 간격 HIGH_ACCURACY 하나뿐이고 받은 위치는 1개였다. 내비 엔진 맵매칭 로그는 계속 (37.4127, 127.0947), `sat(0)`이다. geo fix에 위성 수(10)를 붙여도 Android 위치의 `satellites`는 0이고 내비도 그대로였다. Virtual Console `/vehicle/catalog`에는 위치 항목이 없다. 내비 엔진에 경로 모의 주행 코드(`api_route_simul`)가 있지만 NaviHelper SDK(경로 요청에 출발점 없음), 내비 앱이 받는 인텐트 어디에도 켜는 길이 없고, 내비는 시스템 앱이며 에뮬레이터가 production 빌드라 `adb root`가 안 된다. 실제 차에서는 차량 GNSS·센서 쪽 경로로 위치가 들어가고 에뮬레이터는 그것을 흉내 내지 않는 것으로 추정한다(확인 안 됨). 공모전 사무국에 문의한다.
+- **공식 문서:** document.pleos.ai의 NaviHelper API 페이지는 자바스크립트로 그려져 `curl`로는 본문이 보이지 않았다. 위 동작은 문서가 아니라 에뮬레이터에서 본 것이다.
 
 ### 에뮬레이터 설치와 실행에서 알게 된 것
 
