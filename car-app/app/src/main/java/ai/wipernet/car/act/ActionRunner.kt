@@ -7,6 +7,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import java.util.Locale
+import kotlin.math.roundToInt
 
 private const val LISTEN_S = 8
 private const val ASK_REROUTE = "우회 경로로 안내할까요?"
@@ -35,11 +36,12 @@ class ActionRunner(
         val bypass = u.risk.bypass ?: return
         announcer.say(ASK_REROUTE)
         when (prompt.askYesNo(ASK_REROUTE)) {
-            true -> if (rerouter.viaBypass(bypass)) {
-                responses.onRerouteAccepted(u.risk.id)
-                announcer.say("우회 경로로 안내할게요.")
-            } else {
-                announcer.say("우회 경로를 찾지 못했어요.")
+            true -> when (val r = rerouter.viaBypass(bypass)) {
+                is Reroute.Done -> {
+                    responses.onRerouteAccepted(u.risk.id)
+                    announcer.say(rerouted(r))
+                }
+                Reroute.Failed -> announcer.say("우회 경로를 찾지 못했어요.")
             }
             false -> responses.onRerouteDeclined(u.risk.id, u.risk.level)
             null -> Unit
@@ -81,6 +83,18 @@ private enum class PrepStep(val and: String, val willDo: String, val pleaseDo: S
     DEFOG("김서림 방지를 켜고", "김서림 방지를 켤게요", "김서림 방지를 켜 주세요", { it.defog() }),
     HEADLIGHTS("전조등을 켜고", "전조등을 켤게요", "전조등을 켜 주세요", { it.headlightsOn() }),
 }
+
+/** 받지 못한 값의 문장은 뺀다. 아무것도 없으면 첫 문장만 남는다. */
+private fun rerouted(r: Reroute.Done): String = listOfNotNull(
+    "우회 경로로 안내할게요.",
+    r.remain?.let { remain ->
+        val total = minutes(remain.totalS)
+        val extra = remain.extraS?.let(::minutes)?.takeIf { it >= 1 }
+        if (extra == null) "목적지까지 약 ${total}분 걸려요." else "목적지까지 약 ${total}분이고, ${extra}분 더 걸려요."
+    },
+).joinToString(" ")
+
+private fun minutes(s: Int) = (s / 60.0).roundToInt()
 
 private fun where(u: UpcomingUnderpass) = "${String.format(Locale.US, "%.1f", u.distanceM / 1000.0)}km 앞 ${u.risk.name}"
 
