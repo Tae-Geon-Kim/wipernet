@@ -12,7 +12,7 @@ import android.util.Log
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.withTimeoutOrNull
 
-private const val REROUTE_WAIT_MS = 10_000L
+private const val REROUTE_WAIT_MS = 20_000L
 private const val CONNECT_WAIT_MS = 5_000L
 
 interface Rerouter {
@@ -30,8 +30,8 @@ class ReplayRerouter(private val signals: ReplayVehicleSignals) : Rerouter {
 
 /**
  * 라이브: NaviHelper로 우회 지점을 첫 경유지로 넣고 재탐색한다.
- * 경유지 변경이나 재탐색 완료 콜백이 10초 안에 오면 성공으로 본다.
- * 에뮬레이터 내비가 멈춰 있어 아직 확인하지 못했다(D2, 2026-11-12).
+ * 경유지 변경이나 재탐색 완료 콜백이 20초 안에 오면 성공으로 본다. 내비는 먼저 기존 경로를 취소하고
+ * 약 7.5초 뒤에 경유지 변경을 알린다(에뮬레이터, 2026-11-15).
  */
 class NaviRerouter(context: Context) : Rerouter {
     private val navi = NaviHelper(context)
