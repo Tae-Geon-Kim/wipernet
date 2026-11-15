@@ -10,6 +10,8 @@ import ai.wipernet.car.core.LatLng
 import ai.wipernet.car.core.Level
 import ai.wipernet.car.core.UnderpassRisk
 import ai.wipernet.car.core.UpcomingUnderpass
+import ai.wipernet.car.data.ReplayVehicleSignals
+import ai.wipernet.car.data.Scenario
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -26,7 +28,8 @@ class ActionRunnerTest {
     private class Fakes(
         val answer: Boolean? = null,
         val heard: String? = null,
-        val rerouteOk: Boolean = true,
+        val reroute: Reroute = Reroute.Done(),
+        rerouter: Rerouter? = null,
         val outcomes: Map<String, PrepOutcome> = emptyMap(),
     ) : DriverResponses {
         val spoken = mutableListOf<String>()
@@ -50,7 +53,7 @@ class ActionRunnerTest {
                 override suspend fun defog() = prepOf("defog")
                 override suspend fun headlightsOn() = prepOf("headlights")
             },
-            rerouter = object : Rerouter { override suspend fun viaBypass(bypass: LatLng): Boolean { reroutedVia = bypass; return rerouteOk } },
+            rerouter = rerouter ?: object : Rerouter { override suspend fun viaBypass(bypass: LatLng): Reroute { reroutedVia = bypass; return reroute } },
             prompt = object : ConsentPrompt {
                 override suspend fun askYesNo(question: String): Boolean? { asked += question; return answer }
                 override suspend fun listen(seconds: Int): String? = heard
@@ -85,10 +88,41 @@ class ActionRunnerTest {
     }
 
     @Test fun failedRerouteIsNotTreatedAsAccepted() = runTest {
-        val f = Fakes(answer = true, rerouteOk = false)
+        val f = Fakes(answer = true, reroute = Reroute.Failed)
         f.runner.run(listOf(OfferReroute(up())))
         assertNull(f.accepted)
         assertEquals(listOf("우회 경로로 안내할까요?", "우회 경로를 찾지 못했어요."), f.spoken)
+    }
+
+    private suspend fun spokenAfterReroute(r: Reroute): String {
+        val f = Fakes(answer = true, reroute = r)
+        f.runner.run(listOf(OfferReroute(up())))
+        assertEquals("gaepo", f.accepted)
+        return f.spoken.last()
+    }
+
+    @Test fun rerouteTellsRemainingAndExtraTime() = runTest {
+        assertEquals(
+            "우회 경로로 안내할게요. 목적지까지 약 22분이고, 3분 더 걸려요.",
+            spokenAfterReroute(Reroute.Done(RemainTime(1320, 170))),
+        )
+    }
+
+    @Test fun rerouteWithoutBeforeValueOmitsExtra() = runTest {
+        assertEquals("우회 경로로 안내할게요. 목적지까지 약 22분 걸려요.", spokenAfterReroute(Reroute.Done(RemainTime(1310, null))))
+    }
+
+    @Test fun rerouteExtraUnderAMinuteOrNegativeIsOmitted() = runTest {
+        assertEquals("우회 경로로 안내할게요. 목적지까지 약 22분 걸려요.", spokenAfterReroute(Reroute.Done(RemainTime(1320, 29))))
+        assertEquals("우회 경로로 안내할게요. 목적지까지 약 22분 걸려요.", spokenAfterReroute(Reroute.Done(RemainTime(1320, -120))))
+    }
+
+    @Test fun demoRerouteTellsRemainingTimeFromRecordedTracks() = runTest {
+        val scenario = Scenario.parse(javaClass.getResource("/scenario_small.json")!!.readText())
+        val f = Fakes(answer = true, rerouter = ReplayRerouter(ReplayVehicleSignals(scenario, backgroundScope), scenario))
+        f.runner.run(listOf(OfferReroute(up())))
+        // 우회 경로는 t=220에 도착하고 원래 경로보다 5초 늦다.
+        assertEquals("우회 경로로 안내할게요. 목적지까지 약 4분 걸려요.", f.spoken.last())
     }
 
     @Test fun warnUsesClosureAlertFirst() = runTest {

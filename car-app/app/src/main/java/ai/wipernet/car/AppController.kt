@@ -123,7 +123,7 @@ class AppController(private val app: WiperNetApp) {
                 signals = replay
                 latest = Latest(signals, this)
                 hazards = ReplayHazardClient(scenario, replay.t, this)
-                rerouter = ReplayRerouter(replay)
+                rerouter = ReplayRerouter(replay, scenario)
                 clock = { replay.t.value * 1000L }
             } else {
                 pleos = PleosVehicleSignals(app, this).also { it.start() }
