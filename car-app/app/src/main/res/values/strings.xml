@@ -57,4 +57,5 @@
     <string name="drive_restart_demo">데모 처음부터</string>
     <string name="rain_map_title">내 주변 3 km 비 지도</string>
     <string name="rain_map_legend">10 mm/h 미만 · 10~30 · 30~50 · 50 이상</string>
+    <string name="rain_map_attribution">© OpenStreetMap contributors</string>
 </resources>
